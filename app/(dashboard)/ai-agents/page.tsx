@@ -803,12 +803,14 @@ export default function AIAgentsConfigPage() {
       return;
     }
 
-    setIsUploadingImage(true);
-    setImageUploadError(null);
-
     try {
+      if (!organizationId) {
+        showToast("Organisation non disponible. Veuillez recharger votre session.");
+        setIsUploadingImage(false);
+        return;
+      }
       const supabase = createClient();
-      const targetOrgId = organizationId || "27f3fcc3-402b-4294-ae19-ee4e59ed4037";
+      const targetOrgId = organizationId;
       const testimonialId = editingTestimonial ? editingTestimonial.id : `testim-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 
       let finalMediaUrl = testimonialForm.mediaUrl;
