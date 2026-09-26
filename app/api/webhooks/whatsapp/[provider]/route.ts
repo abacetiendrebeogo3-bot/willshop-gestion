@@ -4,12 +4,9 @@ import { WhatsAppEventNormalizer } from '@/src/infrastructure/whatsapp/WhatsAppE
 import { EvolutionWhatsAppAdapter } from '@/src/infrastructure/whatsapp/EvolutionWhatsAppAdapter';
 import { MetaWhatsAppAdapter } from '@/src/infrastructure/whatsapp/MetaWhatsAppAdapter';
 import { WhatsAppApplicationService } from '@/src/application/services/WhatsAppApplicationService';
+import { getRequiredEnv } from '@/src/config/env';
 
 export const dynamic = 'force-dynamic';
-
-const DEFAULT_SUPABASE_URL = 'https://stbzctncpvgqdpybcrmg.supabase.co';
-const DEFAULT_SUPABASE_SERVICE_ROLE_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0YnpjdG5jcHZncWRweWJjcm1nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYwMDMyNiwiZXhwIjoyMTA0MTc2MzI2fQ.IE2MN4HMLAOseaIs39ca1plt5c4TiN6FM-b3ELE6zSc';
 
 export async function GET(
   request: NextRequest,
@@ -42,15 +39,17 @@ export async function POST(
   const provider = params.provider.toLowerCase();
 
   try {
-    const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || DEFAULT_SUPABASE_URL;
-    const rawServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_SERVICE_ROLE_KEY;
-
-    const supabaseUrl = rawUrl.trim().replace(/^["']|["']$/g, '');
-    const supabaseServiceRoleKey = rawServiceKey.trim().replace(/^["']|["']$/g, '');
-
-    if (!supabaseUrl || !supabaseServiceRoleKey) {
-      console.error('POST /api/webhooks/whatsapp: Supabase credentials missing in environment');
-      return NextResponse.json({ status: 'ERROR', message: 'Server configuration error' }, { status: 500 });
+    let supabaseUrl = '';
+    let supabaseServiceRoleKey = '';
+    try {
+      supabaseUrl = getRequiredEnv('NEXT_PUBLIC_SUPABASE_URL');
+      supabaseServiceRoleKey = getRequiredEnv('SUPABASE_SERVICE_ROLE_KEY');
+    } catch (envErr) {
+      console.error('[Config Error] Supabase credentials missing in webhook:', envErr);
+      return NextResponse.json(
+        { status: 'ERROR', message: 'Configuration serveur manquante (variables d\'environnement non définies).' },
+        { status: 500 }
+      );
     }
 
     const rawBody = await request.text();

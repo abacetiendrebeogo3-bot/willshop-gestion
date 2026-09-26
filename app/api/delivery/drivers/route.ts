@@ -1,20 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createServerSupabaseClient } from '@/src/infrastructure/supabase/server';
+import { getRequiredEnv } from '@/src/config/env';
 
 export const dynamic = 'force-dynamic';
 
-const DEFAULT_SUPABASE_URL = 'https://stbzctncpvgqdpybcrmg.supabase.co';
-const DEFAULT_SUPABASE_SERVICE_ROLE_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0YnpjdG5jcHZncWRweWJjcm1nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYwMDMyNiwiZXhwIjoyMTA0MTc2MzI2fQ.IE2MN4HMLAOseaIs39ca1plt5c4TiN6FM-b3ELE6zSc';
-
 export async function POST(request: NextRequest) {
   try {
-    const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || DEFAULT_SUPABASE_URL;
-    const rawServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_SERVICE_ROLE_KEY;
-
-    const supabaseUrl = rawUrl.trim().replace(/^["']|["']$/g, '');
-    const serviceKey = rawServiceKey.trim().replace(/^["']|["']$/g, '');
+    let supabaseUrl = '';
+    let serviceKey = '';
+    try {
+      supabaseUrl = getRequiredEnv('NEXT_PUBLIC_SUPABASE_URL');
+      serviceKey = getRequiredEnv('SUPABASE_SERVICE_ROLE_KEY');
+    } catch (envErr) {
+      console.error('[Config Error] Configuration Supabase manquante dans /api/delivery/drivers:', envErr);
+      return NextResponse.json(
+        { error: 'Configuration serveur manquante (variables d\'environnement non définies).' },
+        { status: 500 }
+      );
+    }
 
     const supabaseAdmin = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false },
@@ -48,7 +52,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. Resolve organization_id server-side (NO FALLBACK)
+    // 2. Resolve organization_id server-side
     const { data: userRoles } = await supabaseAdmin
       .from('user_organization_roles')
       .select('organization_id')
@@ -65,13 +69,13 @@ export async function POST(request: NextRequest) {
 
     // 3. Parse driver details
     const body = await request.json();
-    const { name, phone, vehicle, status, notes } = body;
+    const { name, phone, vehicle, status } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: 'Le nom du livreur est requis.' }, { status: 400 });
     }
 
-    // 4. Insert into drivers table with server-side organization_id
+    // 4. Insert into drivers table
     const { data: driverRow, error: insertErr } = await supabaseAdmin
       .from('drivers')
       .insert({
