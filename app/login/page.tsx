@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ShoppingBag, Eye, EyeOff, Lock, Mail, AlertCircle, ArrowRight } from "lucide-react";
+import { ShoppingBag, Eye, EyeOff, Lock, Mail, AlertCircle, ArrowRight, CheckCircle2, ArrowLeft, KeyRound } from "lucide-react";
 import { createClient } from "@/src/infrastructure/supabase/client";
 
 export default function LoginPage() {
@@ -14,6 +14,10 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Forgot password mode state
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,6 +28,7 @@ export default function LoginPage() {
 
     setIsLoading(true);
     setErrorMsg(null);
+    setSuccessMsg(null);
 
     try {
       const supabase = createClient();
@@ -48,6 +53,38 @@ export default function LoginPage() {
       window.location.href = "/workspace-select";
     } catch (_err: any) {
       setErrorMsg(_err?.message || "Erreur de connexion.");
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !email.includes("@")) {
+      setErrorMsg("Veuillez saisir votre adresse email professionnelle.");
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    try {
+      const supabase = createClient();
+      const origin = typeof window !== "undefined" ? window.location.origin : "https://willshop-os.vercel.app";
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${origin}/login?reset=true`,
+      });
+
+      if (error) {
+        setErrorMsg(error.message || "Échec de l'envoi du mail de réinitialisation.");
+      } else {
+        setSuccessMsg(
+          "Un lien de réinitialisation du mot de passe a été envoyé à votre adresse email ! Vérifiez votre boîte de réception ou votre dossier spam."
+        );
+      }
+    } catch (err: any) {
+      setErrorMsg(err?.message || "Erreur lors de la réinitialisation du mot de passe.");
+    } finally {
       setIsLoading(false);
     }
   };
@@ -95,118 +132,197 @@ export default function LoginPage() {
 
         {/* Right Side: Form */}
         <div className="p-6 sm:p-10 flex flex-col justify-center space-y-6">
-          <div className="text-center space-y-2">
-            <div className="w-12 h-12 rounded-2xl bg-[#800020] text-[#D4A843] flex items-center justify-center mx-auto md:hidden shadow-xs">
-              <ShoppingBag className="w-6 h-6" />
-            </div>
-            <h2 className="text-2xl font-black text-[#1F1917]">Bienvenue sur WILLShop OS</h2>
-            <p className="text-xs font-semibold text-stone-500">Connectez-vous à votre espace entreprise</p>
-          </div>
-
-          {errorMsg && (
-            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-medium space-y-2">
-              <div className="flex items-start gap-2 font-bold">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
-                <span>{errorMsg}</span>
+          {!isForgotPassword ? (
+            /* Login View */
+            <>
+              <div className="text-center space-y-2">
+                <div className="w-12 h-12 rounded-2xl bg-[#800020] text-[#D4A843] flex items-center justify-center mx-auto md:hidden shadow-xs">
+                  <ShoppingBag className="w-6 h-6" />
+                </div>
+                <h2 className="text-2xl font-black text-[#1F1917]">Bienvenue sur WILLShop OS</h2>
+                <p className="text-xs font-semibold text-stone-500">Connectez-vous à votre espace entreprise</p>
               </div>
+
+              {errorMsg && (
+                <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-medium space-y-2">
+                  <div className="flex items-start gap-2 font-bold">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+                    <span>{errorMsg}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.location.href = "/workspace-select";
+                    }}
+                    className="w-full mt-2 py-2.5 px-3 rounded-lg bg-[#800020] text-white font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-[#660019] transition-colors cursor-pointer"
+                  >
+                    Accéder directement à l'espace entreprise <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
+              <form onSubmit={handleLogin} className="space-y-4 text-xs font-medium">
+                <div>
+                  <label className="block text-stone-700 font-bold mb-1.5">Adresse e-mail</label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="votre@email.com"
+                      className="w-full bg-[#F8F5EE] border border-[#EBE5DA] rounded-xl pl-10 pr-4 py-2.5 font-bold text-[#1F1917] focus:outline-none focus:border-[#800020] focus:ring-2 focus:ring-[#800020]/20"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-stone-700 font-bold mb-1.5">Mot de passe</label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Votre mot de passe"
+                      className="w-full bg-[#F8F5EE] border border-[#EBE5DA] rounded-xl pl-10 pr-10 py-2.5 font-bold text-[#1F1917] focus:outline-none focus:border-[#800020] focus:ring-2 focus:ring-[#800020]/20"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-[#1F1917]"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-xs pt-1">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="w-4 h-4 text-[#800020] rounded border-stone-300 focus:ring-[#800020]"
+                    />
+                    <span className="font-semibold text-stone-700">Se souvenir de moi</span>
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsForgotPassword(true);
+                      setErrorMsg(null);
+                      setSuccessMsg(null);
+                    }}
+                    className="font-extrabold text-[#800020] hover:underline cursor-pointer bg-transparent border-0 p-0"
+                  >
+                    Mot de passe oublié ?
+                  </button>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-[#800020] hover:bg-[#590C1D] text-white py-3 rounded-xl text-xs font-extrabold shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 mt-2 cursor-pointer disabled:opacity-50"
+                >
+                  <span>{isLoading ? "Connexion..." : "Se connecter"}</span>
+                </button>
+              </form>
+
+              <div className="relative text-center text-xs">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-[#EBE5DA]" />
+                </div>
+                <span className="relative bg-white px-2 text-stone-400 font-bold">ou</span>
+              </div>
+
               <button
-                type="button"
                 onClick={() => {
                   window.location.href = "/workspace-select";
                 }}
-                className="w-full mt-2 py-2.5 px-3 rounded-lg bg-[#800020] text-white font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-[#660019] transition-colors cursor-pointer"
+                type="button"
+                className="w-full bg-[#F8F5EE] hover:bg-[#F2ECE1] text-[#1F1917] border border-[#EBE5DA] py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                Accéder directement à l'espace entreprise <ArrowRight className="w-3.5 h-3.5" />
+                <span>Accéder directement à l'espace entreprise</span>
               </button>
-            </div>
-          )}
 
-          <form onSubmit={handleLogin} className="space-y-4 text-xs font-medium">
-            <div>
-              <label className="block text-stone-700 font-bold mb-1.5">Adresse e-mail</label>
-              <div className="relative">
-                <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="votre@email.com"
-                  className="w-full bg-[#F8F5EE] border border-[#EBE5DA] rounded-xl pl-10 pr-4 py-2.5 font-bold text-[#1F1917] focus:outline-none focus:border-[#800020] focus:ring-2 focus:ring-[#800020]/20"
-                />
+              <div className="text-center text-xs pt-2">
+                <span className="text-stone-500 font-medium">Nouvel utilisateur ? </span>
+                <Link href="/signup" className="font-extrabold text-[#800020] hover:underline">
+                  Créer mon entreprise
+                </Link>
               </div>
-            </div>
+            </>
+          ) : (
+            /* Forgot Password Mode */
+            <div className="space-y-5">
+              <div className="text-center space-y-2">
+                <div className="w-12 h-12 rounded-2xl bg-[#800020]/10 text-[#800020] flex items-center justify-center mx-auto shadow-xs">
+                  <KeyRound className="w-6 h-6" />
+                </div>
+                <h2 className="text-2xl font-black text-[#1F1917]">Mot de passe oublié</h2>
+                <p className="text-xs font-semibold text-stone-500 max-w-xs mx-auto">
+                  Saisissez votre adresse email pour recevoir un lien de réinitialisation sécurisé.
+                </p>
+              </div>
 
-            <div>
-              <label className="block text-stone-700 font-bold mb-1.5">Mot de passe</label>
-              <div className="relative">
-                <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Votre mot de passe"
-                  className="w-full bg-[#F8F5EE] border border-[#EBE5DA] rounded-xl pl-10 pr-10 py-2.5 font-bold text-[#1F1917] focus:outline-none focus:border-[#800020] focus:ring-2 focus:ring-[#800020]/20"
-                />
+              {errorMsg && (
+                <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-medium flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
+
+              {successMsg && (
+                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-medium flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600" />
+                  <span>{successMsg}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleResetPassword} className="space-y-4 text-xs font-medium">
+                <div>
+                  <label className="block text-stone-700 font-bold mb-1.5">Adresse e-mail professionnelle</label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="votre@email.com"
+                      className="w-full bg-[#F8F5EE] border border-[#EBE5DA] rounded-xl pl-10 pr-4 py-2.5 font-bold text-[#1F1917] focus:outline-none focus:border-[#800020] focus:ring-2 focus:ring-[#800020]/20"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-[#800020] hover:bg-[#590C1D] text-white py-3 rounded-xl text-xs font-extrabold shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <span>{isLoading ? "Envoi du lien..." : "Envoyer le lien de réinitialisation"}</span>
+                </button>
+              </form>
+
+              <div className="pt-2 text-center">
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-[#1F1917]"
+                  onClick={() => {
+                    setIsForgotPassword(false);
+                    setErrorMsg(null);
+                    setSuccessMsg(null);
+                  }}
+                  className="inline-flex items-center gap-1.5 text-xs font-extrabold text-stone-600 hover:text-[#1F1917] transition-colors cursor-pointer"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  <ArrowLeft className="w-3.5 h-3.5" /> Retour à la connexion
                 </button>
               </div>
             </div>
-
-            <div className="flex items-center justify-between text-xs pt-1">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 text-[#800020] rounded border-stone-300 focus:ring-[#800020]"
-                />
-                <span className="font-semibold text-stone-700">Se souvenir de moi</span>
-              </label>
-
-              <a href="#" className="font-extrabold text-[#800020] hover:underline">
-                Mot de passe oublié ?
-              </a>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-[#800020] hover:bg-[#590C1D] text-white py-3 rounded-xl text-xs font-extrabold shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 mt-2 cursor-pointer disabled:opacity-50"
-            >
-              <span>{isLoading ? "Connexion..." : "Se connecter"}</span>
-            </button>
-          </form>
-
-          <div className="relative text-center text-xs">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-[#EBE5DA]" />
-            </div>
-            <span className="relative bg-white px-2 text-stone-400 font-bold">ou</span>
-          </div>
-
-          <button
-            onClick={() => {
-              window.location.href = "/workspace-select";
-            }}
-            type="button"
-            className="w-full bg-[#F8F5EE] hover:bg-[#F2ECE1] text-[#1F1917] border border-[#EBE5DA] py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <span>Accéder directement à l'espace entreprise</span>
-          </button>
-
-          <div className="text-center text-xs pt-2">
-            <span className="text-stone-500 font-medium">Nouvel utilisateur ? </span>
-            <Link href="/signup" className="font-extrabold text-[#800020] hover:underline">
-              Créer mon entreprise
-            </Link>
-          </div>
+          )}
         </div>
       </div>
     </div>
