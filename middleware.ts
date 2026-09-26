@@ -4,12 +4,12 @@ export function middleware(request: NextRequest) {
   try {
     const { pathname } = request.nextUrl;
 
-    // 1. Skip static assets, Next.js internals, and API routes
+    // 1. Skip static assets, Next.js internals, images, and API routes
     if (
       pathname.startsWith('/_next') ||
       pathname.startsWith('/api/') ||
       pathname.startsWith('/favicon') ||
-      pathname.includes('.')
+      /\.(svg|png|jpg|jpeg|gif|webp|css|js|ico|json|woff|woff2)$/i.test(pathname)
     ) {
       return NextResponse.next();
     }
@@ -36,9 +36,7 @@ export function middleware(request: NextRequest) {
         let parsed: any = null;
         try {
           parsed = JSON.parse(rawVal);
-        } catch (_) {
-          // Cookie might be raw token string
-        }
+        } catch (_) {}
 
         if (parsed) {
           if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.access_token) {
@@ -124,13 +122,11 @@ export function middleware(request: NextRequest) {
 
     return NextResponse.next();
   } catch (err) {
-    console.error('[Middleware Catch-All Handled]', err);
+    console.error('[Middleware Error Handled]', err);
     return NextResponse.next();
   }
 }
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|css|js)$).*)',
-  ],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };
