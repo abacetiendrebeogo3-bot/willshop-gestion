@@ -3,18 +3,19 @@
 @tailwind utilities;
 
 :root {
-  --background: #FAFAFA;
-  --foreground: #111827;
+  --background: #F8F5EE;
+  --foreground: #1F1917;
   --card: #FFFFFF;
-  --card-foreground: #111827;
-  --border: #E5E7EB;
+  --card-foreground: #1F1917;
+  --border: #EBE5DA;
 }
 
 body {
   color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--background);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* Custom Executive Cockpit Scrollbar */
@@ -23,21 +24,21 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0B0F17;
+  background: #F2ECE1;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1E293B;
-  border-radius: 3px;
+  background: #D8CEBD;
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #B5A893;
 }
 
-/* Micro-Animations & Motion Utilities */
+/* Micro-Animations & Smooth Motion Utilities */
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -64,15 +65,15 @@ body {
 }
 
 .animate-fade-in-up {
-  animation: fadeInUp 0.35s ease-out cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeInUp 0.22s ease-out cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.2s ease-out forwards;
+  animation: fadeIn 0.18s ease-out forwards;
 }
 
 .animate-slide-in-left {
-  animation: slideInLeft 0.25s ease-out forwards;
+  animation: slideInLeft 0.2s ease-out forwards;
 }
 
 /* Accessibility: Respect Reduced Motion Preferences */

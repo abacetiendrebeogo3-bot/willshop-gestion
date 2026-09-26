@@ -14,8 +14,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "WILLShop OS — Cockpit Intelligent CEO",
-  description: "Le système d'exploitation commercial de votre entreprise.",
+  title: "WILLShop OS — Système d'Exploitation Commercial",
+  description: "Votre activité commercial, plus simple.",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
@@ -42,11 +42,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className="dark">
-      <body className="bg-background text-foreground antialiased flex min-h-screen">
+    <html lang="fr" className="light">
+      <body className="bg-[#F8F5EE] text-[#1F1917] antialiased flex min-h-screen font-sans">
         <SidebarProvider>
           <Sidebar />
-          <div className="flex-1 flex flex-col min-w-0 w-full overflow-x-hidden">
+          <div className="flex-1 flex flex-col min-w-0 w-full overflow-x-hidden bg-[#F8F5EE]">
             <Navbar />
             <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto">{children}</main>
           </div>

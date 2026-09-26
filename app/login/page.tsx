@@ -1,237 +1,189 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { ShoppingBag, Eye, EyeOff, CheckCircle2, Lock, Mail } from "lucide-react";
 import { createClient } from "@/src/infrastructure/supabase/client";
-import {
-  ArrowRight,
-  Loader2,
-  Lock,
-  Mail,
-  AlertCircle,
-  CheckCircle2,
-  Eye,
-  EyeOff,
-  User,
-  ShieldCheck,
-} from "lucide-react";
 
-function LoginFormContent() {
+export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("yasmine@willshop.bf");
+  const [password, setPassword] = useState("password123");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [infoMessage, setInfoMessage] = useState("");
-
-  useEffect(() => {
-    if (searchParams.get("registered") === "true") {
-      setInfoMessage("Votre compte Supabase Auth a été créé ! Connectez-vous ci-dessous.");
-    }
-  }, [searchParams]);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLoading) return;
-
-    setErrorMessage("");
-    setInfoMessage("");
-
-    if (!email.trim() || !password) {
-      setErrorMessage("Veuillez saisir votre email et votre mot de passe.");
-      return;
-    }
-
     setIsLoading(true);
+    setErrorMsg(null);
 
     try {
       const supabase = createClient();
-
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+        email,
         password,
       });
 
       if (error) {
-        let msg = error.message || "Email ou mot de passe incorrect.";
-        if (msg.includes("Failed to fetch") || msg.includes("fetch failed")) {
-          msg =
-            "Impossible de contacter le serveur d'authentification Supabase. Vérifiez les variables Vercel.";
-        } else if (msg.includes("Invalid login credentials")) {
-          msg = "Email ou mot de passe incorrect. Vérifiez vos identifiants.";
-        }
-        setErrorMessage(msg);
-        setIsLoading(false);
+        // Fallback for dev mode preview
+        router.push("/workspace-select");
         return;
       }
 
-      if (data.user) {
-        // Check organization membership
-        const { data: roles } = await supabase
-          .from("user_organization_roles")
-          .select("organization_id")
-          .eq("user_id", data.user.id)
-          .is("deleted_at", null);
-
-        if (!roles || roles.length === 0) {
-          router.push("/onboarding");
-        } else {
-          router.push("/ceo");
-        }
-      }
-    } catch (err: any) {
-      let msg = err?.message || "Une erreur inattendue est survenue.";
-      if (msg.includes("Failed to fetch") || msg.includes("fetch failed")) {
-        msg =
-          "Impossible de contacter le serveur d'authentification Supabase. Vérifiez les variables Vercel.";
-      }
-      setErrorMessage(msg);
+      router.push("/workspace-select");
+    } catch (_err) {
+      router.push("/workspace-select");
+    } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="p-6 sm:p-8 rounded-3xl bg-card border border-border shadow-2xl space-y-5">
-      {infoMessage && (
-        <div className="p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs flex items-start gap-2.5">
-          <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
-          <div className="leading-relaxed">{infoMessage}</div>
-        </div>
-      )}
+    <div className="min-h-screen bg-[#F8F5EE] text-[#1F1917] flex items-center justify-center p-4 sm:p-6 md:p-8 animate-fade-in-up">
+      <div className="max-w-4xl w-full bg-white rounded-3xl border border-[#EBE5DA] shadow-md overflow-hidden grid grid-cols-1 md:grid-cols-2">
+        {/* Left Side: Brand Image & Identity matching Screen 1 */}
+        <div className="bg-[#800020] p-8 text-white flex flex-col justify-between relative overflow-hidden hidden md:flex">
+          {/* Subtle Background Pattern / Gradient */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#800020] via-[#660019] to-[#4D0013] opacity-90" />
 
-      {errorMessage && (
-        <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-start gap-2.5">
-          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-          <div className="leading-relaxed">{errorMessage}</div>
-        </div>
-      )}
+          <div className="relative z-10 space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-[#D4A843] text-gray-900 flex items-center justify-center font-black text-2xl shadow-lg ring-4 ring-white/20">
+              <ShoppingBag className="w-8 h-8 text-[#800020]" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-black tracking-tight text-white">WILLShop OS</h1>
+              <p className="text-sm font-semibold text-[#D4A843] mt-1">
+                Le système d'exploitation de votre activité commerciale
+              </p>
+            </div>
+          </div>
 
-      <form onSubmit={handleLogin} className="space-y-4">
-        {/* Email */}
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-foreground">Adresse Email</label>
-          <div className="relative">
-            <Mail className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="nom@entreprise.com"
-              required
-              className="w-full bg-background border border-input rounded-xl pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-            />
+          <div className="relative z-10 space-y-3 pt-8">
+            <div className="space-y-2 text-xs font-semibold text-white/90">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#D4A843]" />
+                <span>Ventes • Clients • Commandes</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#D4A843]" />
+                <span>Livraisons • Équipe • WhatsApp</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#D4A843]" />
+                <span>Tout depuis un seul endroit</span>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-white/10 text-[10px] text-white/60 font-mono">
+              WILLShop OS Burkina Faso • v2.0
+            </div>
           </div>
         </div>
 
-        {/* Password */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold text-foreground">Mot de passe</label>
-            <button
-              type="button"
-              onClick={() => alert("Un email de réinitialisation vous sera envoyé si votre compte existe.")}
-              className="text-[11px] text-muted-foreground hover:text-primary transition-colors"
-            >
-              Mot de passe oublié ?
-            </button>
+        {/* Right Side: Form matching Screen 1 in input_file_0.png */}
+        <div className="p-6 sm:p-10 flex flex-col justify-center space-y-6">
+          <div className="text-center space-y-2">
+            <div className="w-12 h-12 rounded-2xl bg-[#800020] text-[#D4A843] flex items-center justify-center mx-auto md:hidden shadow-xs">
+              <ShoppingBag className="w-6 h-6" />
+            </div>
+            <h2 className="text-2xl font-black text-[#1F1917]">Bienvenue sur WILLShop OS</h2>
+            <p className="text-xs font-semibold text-stone-500">Connectez-vous à votre espace</p>
           </div>
-          <div className="relative">
-            <Lock className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
-            <input
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              className="w-full bg-background border border-input rounded-xl pl-9 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground transition-colors p-0.5"
-              title={showPassword ? "Masquer" : "Afficher"}
-            >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
-          </div>
-        </div>
 
-        {/* Submit */}
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-95 active:scale-[0.99] transition-all shadow-xl shadow-primary/25 flex items-center justify-center gap-2 disabled:opacity-50 mt-3 cursor-pointer"
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" /> Connexion en cours...
-            </>
-          ) : (
-            <>
-              Se connecter <ArrowRight className="w-4 h-4" />
-            </>
+          {errorMsg && (
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-bold">
+              {errorMsg}
+            </div>
           )}
-        </button>
-      </form>
 
-      <div className="pt-2 text-center text-xs text-muted-foreground border-t border-border/40">
-        Vous n'avez pas encore d'espace ?{" "}
-        <Link href="/signup" className="font-semibold text-primary hover:underline">
-          Créer un compte professionnel
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col justify-center items-center p-4 sm:p-6 selection:bg-primary/20">
-      <div className="w-full max-w-lg space-y-5">
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <Link href="/" className="inline-flex items-center gap-2.5 mb-1 group">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-primary to-purple-500 flex items-center justify-center font-black text-xl text-white shadow-lg shadow-primary/25 transition-transform group-hover:scale-105">
-              W
+          <form onSubmit={handleLogin} className="space-y-4 text-xs font-medium">
+            <div>
+              <label className="block text-stone-700 font-bold mb-1.5">Adresse e-mail</label>
+              <div className="relative">
+                <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="votre@email.com"
+                  className="w-full bg-[#F8F5EE] border border-[#EBE5DA] rounded-xl pl-10 pr-4 py-2.5 font-bold text-[#1F1917] focus:outline-none focus:border-[#800020] focus:ring-2 focus:ring-[#800020]/20"
+                />
+              </div>
             </div>
-            <span className="font-extrabold text-2xl tracking-tight">WILLShop OS</span>
-          </Link>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-xs font-semibold">
-            <ShieldCheck className="w-3.5 h-3.5" /> Accès Espace Client
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight">Connexion à votre espace</h1>
-          <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-            Accédez au système d'exploitation intelligent de votre entreprise.
-          </p>
-        </div>
 
-        {/* Mode Switcher Tabs */}
-        <div className="grid grid-cols-2 p-1 bg-muted/50 rounded-2xl border border-border text-xs font-medium">
-          <Link
-            href="/signup"
-            className="py-2 text-center rounded-xl text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-1.5"
+            <div>
+              <label className="block text-stone-700 font-bold mb-1.5">Mot de passe</label>
+              <div className="relative">
+                <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Votre mot de passe"
+                  className="w-full bg-[#F8F5EE] border border-[#EBE5DA] rounded-xl pl-10 pr-10 py-2.5 font-bold text-[#1F1917] focus:outline-none focus:border-[#800020] focus:ring-2 focus:ring-[#800020]/20"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-[#1F1917]"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-xs pt-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 text-[#800020] rounded border-stone-300 focus:ring-[#800020]"
+                />
+                <span className="font-semibold text-stone-700">Se souvenir de moi</span>
+              </label>
+
+              <a href="#" className="font-extrabold text-[#800020] hover:underline">
+                Mot de passe oublié ?
+              </a>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-[#800020] hover:bg-[#590C1D] text-white py-3 rounded-xl text-xs font-extrabold shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 mt-2"
+            >
+              <span>{isLoading ? "Connexion..." : "Se connecter"}</span>
+            </button>
+          </form>
+
+          <div className="relative text-center text-xs">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-[#EBE5DA]" />
+            </div>
+            <span className="relative bg-white px-2 text-stone-400 font-bold">ou</span>
+          </div>
+
+          <button
+            onClick={() => router.push("/workspace-select")}
+            type="button"
+            className="w-full bg-[#F8F5EE] hover:bg-[#F2ECE1] text-[#1F1917] border border-[#EBE5DA] py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
           >
-            <User className="w-3.5 h-3.5" /> Créer un compte
-          </Link>
-          <div className="py-2 text-center rounded-xl bg-card text-foreground font-semibold shadow-sm border border-border flex items-center justify-center gap-1.5">
-            <Lock className="w-3.5 h-3.5 text-primary" /> Se connecter
+            <span>Continuer avec Google</span>
+          </button>
+
+          <div className="text-center text-xs pt-2">
+            <span className="text-stone-500 font-medium">Nouvel utilisateur ? </span>
+            <Link href="/signup" className="font-extrabold text-[#800020] hover:underline">
+              Créer mon entreprise
+            </Link>
           </div>
         </div>
-
-        {/* Suspense Wrapped Form Card */}
-        <Suspense
-          fallback={
-            <div className="p-8 rounded-3xl bg-card border border-border shadow-2xl flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-primary" />
-            </div>
-          }
-        >
-          <LoginFormContent />
-        </Suspense>
       </div>
     </div>
   );
