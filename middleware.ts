@@ -1,132 +1,102 @@
-import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PUBLIC_SUPABASE_URL = 'https://stbzctncpvgqdpybcrmg.supabase.co';
-const PUBLIC_SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0YnpjdG5jcHZncWRweWJjcm1nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2MDAzMjYsImV4cCI6MjEwNDE3NjMyNn0.G7QlTqyz4_D6nxbn72tIX1K-nbAKBzSX7CuMB2jixvs';
-
-export async function middleware(request: NextRequest) {
-  const pathname = request.nextUrl.pathname;
-
-  // 1. Never block static files, assets or Next.js internal files
-  if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/api/') ||
-    pathname.includes('.')
-  ) {
-    return NextResponse.next();
-  }
-
-  const isPublicPath =
-    pathname === '/' ||
-    pathname.startsWith('/login') ||
-    pathname.startsWith('/signup') ||
-    pathname.startsWith('/api/webhooks') ||
-    pathname.startsWith('/api/health');
-
-  let supabaseResponse = NextResponse.next({
-    request,
-  });
-
+export function middleware(request: NextRequest) {
   try {
-    const supabaseUrl =
-      process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.trim().length > 0
-        ? process.env.NEXT_PUBLIC_SUPABASE_URL
-        : PUBLIC_SUPABASE_URL;
+    const { pathname } = request.nextUrl;
 
-    const supabaseAnonKey =
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.trim().length > 0
-        ? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-        : PUBLIC_SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !supabaseAnonKey) {
-      return supabaseResponse;
+    // 1. Skip static assets, Next.js internals, and API routes
+    if (
+      pathname.startsWith('/_next') ||
+      pathname.startsWith('/api/') ||
+      pathname.startsWith('/favicon') ||
+      pathname.includes('.')
+    ) {
+      return NextResponse.next();
     }
 
-    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet: Array<{ name: string; value: string; options: Record<string, unknown> }>) {
-          try {
-            cookiesToSet.forEach(({ name, value }) => {
-              try {
-                request.cookies.set(name, value);
-              } catch (_) {}
-            });
-            supabaseResponse = NextResponse.next({
-              request,
-            });
-            cookiesToSet.forEach(({ name, value, options }) => {
-              try {
-                supabaseResponse.cookies.set(name, value, options as any);
-              } catch (_) {}
-            });
-          } catch (_) {}
-        },
-      },
-    });
+    // 2. Define public routes that do not require authentication
+    const isPublicPath =
+      pathname === '/' ||
+      pathname.startsWith('/login') ||
+      pathname.startsWith('/signup') ||
+      pathname.startsWith('/offline');
 
-    let user = null;
-    try {
-      const { data } = await supabase.auth.getUser();
-      user = data?.user || null;
-    } catch (_authErr) {
-      user = null;
-    }
+    // 3. Check for Supabase session cookies
+    const allCookies = request.cookies.getAll();
+    const supabaseCookie = allCookies.find(
+      (c) => c.name.startsWith('sb-') || c.name.includes('auth-token')
+    );
 
-    // 1. If not logged in and accessing protected page -> redirect to /login
-    if (!user && !isPublicPath) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/login';
-      return NextResponse.redirect(url);
-    }
+    let isAuthenticated = false;
+    let userRole = 'COMMERCIAL';
 
-    // 2. If logged in, fetch user role and enforce RBAC route restrictions
-    if (user) {
-      let userRole = 'COMMERCIAL';
+    if (supabaseCookie && supabaseCookie.value) {
       try {
-        const { data: roleRows } = await supabase
-          .from('user_organization_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .is('deleted_at', null);
-
-        if (roleRows && roleRows.length > 0) {
-          userRole = roleRows[0].role || 'COMMERCIAL';
+        const rawVal = decodeURIComponent(supabaseCookie.value);
+        let parsed: any = null;
+        try {
+          parsed = JSON.parse(rawVal);
+        } catch (_) {
+          // Cookie might be raw token string
         }
-      } catch (_roleErr) {
-        // Fallback default
-      }
 
-      // If accessing login/signup/root -> redirect to appropriate home route
+        if (parsed) {
+          if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.access_token) {
+            isAuthenticated = true;
+          } else if (parsed.access_token || parsed.user) {
+            isAuthenticated = true;
+          }
+        } else if (supabaseCookie.value.length > 20) {
+          isAuthenticated = true;
+        }
+
+        if (parsed?.user?.user_metadata?.role) {
+          userRole = parsed.user.user_metadata.role;
+        } else if (parsed?.user_role) {
+          userRole = parsed.user_role;
+        }
+      } catch (_) {
+        isAuthenticated = false;
+      }
+    }
+
+    // 4. Handle unauthenticated visitors
+    if (!isAuthenticated) {
+      if (isPublicPath) {
+        return NextResponse.next();
+      }
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = '/login';
+      return NextResponse.redirect(loginUrl);
+    }
+
+    // 5. Handle authenticated users visiting entrance pages
+    if (isAuthenticated) {
       if (pathname === '/' || pathname.startsWith('/login') || pathname.startsWith('/signup')) {
-        const url = request.nextUrl.clone();
-        url.pathname =
+        const redirectUrl = request.nextUrl.clone();
+        redirectUrl.pathname =
           userRole === 'LIVREUR'
             ? '/delivery/my-deliveries'
             : userRole === 'COMMERCIAL'
             ? '/sales/my-day'
             : '/ceo';
-        return NextResponse.redirect(url);
+        return NextResponse.redirect(redirectUrl);
       }
 
-      // Restricted routes for LIVREUR role
+      // Role-based route protection for LIVREUR
       if (userRole === 'LIVREUR') {
         const allowedForLivreur = ['/delivery', '/profile', '/login', '/signup'];
         const isAllowed = allowedForLivreur.some(
           (path) => pathname === path || pathname.startsWith(path + '/')
         );
-
         if (!isAllowed) {
-          const url = request.nextUrl.clone();
-          url.pathname = '/delivery/my-deliveries';
-          return NextResponse.redirect(url);
+          const redirectUrl = request.nextUrl.clone();
+          redirectUrl.pathname = '/delivery/my-deliveries';
+          return NextResponse.redirect(redirectUrl);
         }
       }
 
-      // Restricted routes for COMMERCIAL role
+      // Role-based route protection for COMMERCIAL
       if (userRole === 'COMMERCIAL') {
         const restrictedForCommercial = [
           '/ceo',
@@ -141,34 +111,26 @@ export async function middleware(request: NextRequest) {
           '/wilty',
           '/settings',
         ];
-
         const isRestricted = restrictedForCommercial.some(
           (r) => pathname === r || pathname.startsWith(r + '/')
         );
         if (isRestricted) {
-          const url = request.nextUrl.clone();
-          url.pathname = '/sales/my-day';
-          return NextResponse.redirect(url);
+          const redirectUrl = request.nextUrl.clone();
+          redirectUrl.pathname = '/sales/my-day';
+          return NextResponse.redirect(redirectUrl);
         }
       }
     }
-  } catch (err) {
-    console.error('[Middleware Global Catch]', err);
-    if (!isPublicPath) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/login';
-      return NextResponse.redirect(url);
-    }
-  }
 
-  return supabaseResponse;
+    return NextResponse.next();
+  } catch (err) {
+    console.error('[Middleware Catch-All Handled]', err);
+    return NextResponse.next();
+  }
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for static files & assets
-     */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|css|js)$).*)',
   ],
 };
