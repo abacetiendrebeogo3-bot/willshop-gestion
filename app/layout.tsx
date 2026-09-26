@@ -7,7 +7,7 @@ import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
 import { PwaInstallPrompt } from "@/components/pwa/PwaInstallPrompt";
 
 export const viewport: Viewport = {
-  themeColor: "#7B61FF",
+  themeColor: "#800020",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,

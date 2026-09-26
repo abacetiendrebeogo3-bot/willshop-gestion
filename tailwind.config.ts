@@ -17,13 +17,23 @@ const config: Config = {
         "card-foreground": "var(--card-foreground)",
         border: "var(--border)",
         primary: {
-          DEFAULT: "#2563EB", // WillShop Cobalt Blue
-          hover: "#1D4ED8",
+          DEFAULT: "#800020", // WILLShop Bordeaux Profond
+          hover: "#660019",
+          foreground: "#FFFFFF",
+        },
+        gold: {
+          DEFAULT: "#D4A843", // WILLShop Or Officiel
+          hover: "#B88E30",
+          foreground: "#111827",
+        },
+        bordeaux: {
+          DEFAULT: "#800020",
+          hover: "#660019",
           foreground: "#FFFFFF",
         },
         accent: {
-          DEFAULT: "#D4A843", // Executive Gold Accent
-          foreground: "#000000",
+          DEFAULT: "#D4A843", // WILLShop Gold Accent
+          foreground: "#111827",
         },
         sidebar: {
           DEFAULT: "#0F172A",
