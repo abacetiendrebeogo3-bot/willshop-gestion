@@ -1,0 +1,1 @@
+fix: move middleware.ts into src/ directory for Next.js Vercel routing compatibility

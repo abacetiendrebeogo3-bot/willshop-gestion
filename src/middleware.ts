@@ -4,7 +4,7 @@ export function middleware(request: NextRequest) {
   try {
     const { pathname } = request.nextUrl;
 
-    // 1. Skip static assets, Next.js internals, images, and API routes
+    // 1. Skip static assets, Next.js internals, images, fonts, and API routes
     if (
       pathname.startsWith('/_next') ||
       pathname.startsWith('/api/') ||
