@@ -1,100 +1,150 @@
+import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+const FALLBACK_SUPABASE_URL = 'https://stbzctncpvgqdpybcrmg.supabase.co';
+const FALLBACK_SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0YnpjdG5jcHZncWRweWJjcm1nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2MDAzMjYsImV4cCI6MjEwNDE3NjMyNn0.G7QlTqyz4_D6nxbn72tIX1K-nbAKBzSX7CuMB2jixvs';
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // 1. Skip static assets, Next.js internals, images, and API routes
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api/') ||
+    pathname.startsWith('/favicon') ||
+    /\.(svg|png|jpg|jpeg|gif|webp|css|js|ico|json|woff|woff2)$/i.test(pathname)
+  ) {
+    return NextResponse.next();
+  }
+
+  // 2. Identify public paths
+  const isPublicPath =
+    pathname === '/' ||
+    pathname === '/login' ||
+    pathname === '/signup' ||
+    pathname.startsWith('/login/') ||
+    pathname.startsWith('/signup/') ||
+    pathname.startsWith('/offline');
+
+  let response = NextResponse.next({
+    request,
+  });
+
   try {
-    const { pathname } = request.nextUrl;
+    // Verify Environment Variables
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || FALLBACK_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || FALLBACK_SUPABASE_ANON_KEY;
 
-    // 1. Skip static assets, Next.js internals, images, fonts, and API routes
-    if (
-      pathname.startsWith('/_next') ||
-      pathname.startsWith('/api/') ||
-      pathname.startsWith('/favicon') ||
-      /\.(svg|png|jpg|jpeg|gif|webp|css|js|ico|json|woff|woff2)$/i.test(pathname)
-    ) {
-      return NextResponse.next();
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      console.warn(
+        '[Middleware Warning] NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable is missing on Vercel. Falling back to project default.'
+      );
     }
 
-    // 2. Define public routes that do not require authentication
-    const isPublicPath =
-      pathname === '/' ||
-      pathname.startsWith('/login') ||
-      pathname.startsWith('/signup') ||
-      pathname.startsWith('/offline');
+    // Edge-safe Supabase Server Client
+    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            response = NextResponse.next({
+              request,
+            });
+            cookiesToSet.forEach(({ name, value, options }) => {
+              try {
+                response.cookies.set(name, value, options as any);
+              } catch (_) {}
+            });
+          } catch (_) {}
+        },
+      },
+    });
 
-    // 3. Check for Supabase session cookies
-    const allCookies = request.cookies.getAll();
-    const supabaseCookie = allCookies.find(
-      (c) => c.name.startsWith('sb-') || c.name.includes('auth-token')
-    );
+    // Refresh auth session safely
+    let user = null;
+    try {
+      const { data } = await supabase.auth.getUser();
+      user = data?.user || null;
+    } catch (authErr) {
+      console.warn('[Middleware Auth Warning] Unable to fetch user session:', authErr);
+      user = null;
+    }
 
-    let isAuthenticated = false;
-    let userRole = 'COMMERCIAL';
+    // 3. Prevent Infinite Redirection Loops & Enforce Route Protection
 
-    if (supabaseCookie && supabaseCookie.value) {
+    // Unauthenticated user attempting to access a protected page
+    if (!user && !isPublicPath) {
+      if (pathname !== '/login') {
+        const loginUrl = request.nextUrl.clone();
+        loginUrl.pathname = '/login';
+        return NextResponse.redirect(loginUrl);
+      }
+      return response;
+    }
+
+    // Authenticated user attempting to access entrance pages (/ , /login , /signup)
+    if (user && isPublicPath) {
+      let userRole = 'COMMERCIAL';
       try {
-        const rawVal = decodeURIComponent(supabaseCookie.value);
-        let parsed: any = null;
-        try {
-          parsed = JSON.parse(rawVal);
-        } catch (_) {}
+        const { data: roleRows } = await supabase
+          .from('user_organization_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .is('deleted_at', null);
 
-        if (parsed) {
-          if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.access_token) {
-            isAuthenticated = true;
-          } else if (parsed.access_token || parsed.user) {
-            isAuthenticated = true;
-          }
-        } else if (supabaseCookie.value.length > 20) {
-          isAuthenticated = true;
+        if (roleRows && roleRows.length > 0 && roleRows[0]?.role) {
+          userRole = roleRows[0].role;
         }
-
-        if (parsed?.user?.user_metadata?.role) {
-          userRole = parsed.user.user_metadata.role;
-        } else if (parsed?.user_role) {
-          userRole = parsed.user_role;
-        }
-      } catch (_) {
-        isAuthenticated = false;
+      } catch (_roleErr) {
+        // Fallback default
       }
-    }
 
-    // 4. Handle unauthenticated visitors
-    if (!isAuthenticated) {
-      if (isPublicPath) {
-        return NextResponse.next();
-      }
-      const loginUrl = request.nextUrl.clone();
-      loginUrl.pathname = '/login';
-      return NextResponse.redirect(loginUrl);
-    }
+      const targetPath =
+        userRole === 'LIVREUR'
+          ? '/delivery/my-deliveries'
+          : userRole === 'COMMERCIAL'
+          ? '/sales/my-day'
+          : '/ceo';
 
-    // 5. Handle authenticated users visiting entrance pages
-    if (isAuthenticated) {
-      if (pathname === '/' || pathname.startsWith('/login') || pathname.startsWith('/signup')) {
+      if (pathname !== targetPath) {
         const redirectUrl = request.nextUrl.clone();
-        redirectUrl.pathname =
-          userRole === 'LIVREUR'
-            ? '/delivery/my-deliveries'
-            : userRole === 'COMMERCIAL'
-            ? '/sales/my-day'
-            : '/ceo';
+        redirectUrl.pathname = targetPath;
         return NextResponse.redirect(redirectUrl);
       }
+    }
 
-      // Role-based route protection for LIVREUR
+    // Authenticated user accessing role-restricted routes
+    if (user && !isPublicPath) {
+      let userRole = 'COMMERCIAL';
+      try {
+        const { data: roleRows } = await supabase
+          .from('user_organization_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .is('deleted_at', null);
+
+        if (roleRows && roleRows.length > 0 && roleRows[0]?.role) {
+          userRole = roleRows[0].role;
+        }
+      } catch (_roleErr) {}
+
+      // Restricted routes for LIVREUR
       if (userRole === 'LIVREUR') {
         const allowedForLivreur = ['/delivery', '/profile', '/login', '/signup'];
         const isAllowed = allowedForLivreur.some(
           (path) => pathname === path || pathname.startsWith(path + '/')
         );
-        if (!isAllowed) {
+        if (!isAllowed && pathname !== '/delivery/my-deliveries') {
           const redirectUrl = request.nextUrl.clone();
           redirectUrl.pathname = '/delivery/my-deliveries';
           return NextResponse.redirect(redirectUrl);
         }
       }
 
-      // Role-based route protection for COMMERCIAL
+      // Restricted routes for COMMERCIAL
       if (userRole === 'COMMERCIAL') {
         const restrictedForCommercial = [
           '/ceo',
@@ -112,7 +162,7 @@ export function middleware(request: NextRequest) {
         const isRestricted = restrictedForCommercial.some(
           (r) => pathname === r || pathname.startsWith(r + '/')
         );
-        if (isRestricted) {
+        if (isRestricted && pathname !== '/sales/my-day') {
           const redirectUrl = request.nextUrl.clone();
           redirectUrl.pathname = '/sales/my-day';
           return NextResponse.redirect(redirectUrl);
@@ -120,9 +170,14 @@ export function middleware(request: NextRequest) {
       }
     }
 
-    return NextResponse.next();
-  } catch (err) {
-    console.error('[Middleware Error Handled]', err);
+    return response;
+  } catch (globalErr) {
+    console.error('[Middleware Fatal Error Handled]', globalErr);
+    if (pathname !== '/login' && !isPublicPath) {
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = '/login';
+      return NextResponse.redirect(loginUrl);
+    }
     return NextResponse.next();
   }
 }
