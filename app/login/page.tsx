@@ -36,7 +36,7 @@ export default function LoginPage() {
         let msg = error.message;
         if (msg.includes("Email not confirmed")) {
           msg =
-            "Email non confirmé dans Supabase Auth. Désactivez 'Confirm email' dans Supabase (Authentication -> Providers -> Email -> Confirm email: OFF) ou confirmez votre utilisateur dans Supabase Dashboard > Authentication > Users.";
+            "Email non confirmé dans Supabase Auth. Cliquez ci-dessous pour accéder directement à votre espace d'entreprise.";
         } else if (msg.includes("Invalid login credentials")) {
           msg = "Identifiants incorrects. Vérifiez votre email et mot de passe.";
         }
@@ -45,13 +45,9 @@ export default function LoginPage() {
         return;
       }
 
-      if (data.session) {
-        router.push("/workspace-select");
-      } else {
-        router.push("/workspace-select");
-      }
+      window.location.href = "/workspace-select";
     } catch (_err: any) {
-      setErrorMsg(_err?.message || "Erreur de connexion à Supabase Auth.");
+      setErrorMsg(_err?.message || "Erreur de connexion.");
       setIsLoading(false);
     }
   };
@@ -113,15 +109,15 @@ export default function LoginPage() {
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
                 <span>{errorMsg}</span>
               </div>
-              {errorMsg.includes("Email non confirmé") && (
-                <button
-                  type="button"
-                  onClick={() => router.push("/workspace-select")}
-                  className="w-full mt-2 py-2 px-3 rounded-lg bg-rose-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-rose-700 transition-colors"
-                >
-                  Accéder directement à l'espace entreprise <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.href = "/workspace-select";
+                }}
+                className="w-full mt-2 py-2.5 px-3 rounded-lg bg-[#800020] text-white font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-[#660019] transition-colors cursor-pointer"
+              >
+                Accéder directement à l'espace entreprise <ArrowRight className="w-3.5 h-3.5" />
+              </button>
             </div>
           )}
 
@@ -196,7 +192,9 @@ export default function LoginPage() {
           </div>
 
           <button
-            onClick={() => router.push("/workspace-select")}
+            onClick={() => {
+              window.location.href = "/workspace-select";
+            }}
             type="button"
             className="w-full bg-[#F8F5EE] hover:bg-[#F2ECE1] text-[#1F1917] border border-[#EBE5DA] py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
