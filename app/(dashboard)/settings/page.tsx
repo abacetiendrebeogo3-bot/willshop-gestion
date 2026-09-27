@@ -63,7 +63,7 @@ export default function SettingsPage() {
   // Team members list
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviteForm, setInviteForm] = useState({ email: "", role: "COMMERCIAL" });
+  const [inviteForm, setInviteForm] = useState({ phone: "", name: "", email: "", role: "COMMERCIAL" });
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -179,26 +179,44 @@ export default function SettingsPage() {
     }
   };
 
-  // Invite Member
+  // Invite Member by Phone Number
   const handleInviteMember = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inviteForm.email.trim() || !orgId) return;
+    if (!inviteForm.phone.trim() || !orgId) {
+      showToast("Le numéro de téléphone est obligatoire pour ajouter un membre.");
+      return;
+    }
 
     try {
       const supabase = createClient();
-      await supabase.from("user_organization_roles").insert({
-        organization_id: orgId,
-        user_id: `user_inv_${Date.now()}`,
-        role: inviteForm.role,
-      });
+      const phoneClean = inviteForm.phone.trim();
+      const nameParts = inviteForm.name.trim().split(" ");
+      const firstName = nameParts[0] || "Membre";
+      const lastName = nameParts.slice(1).join(" ") || "";
 
-      showToast(`Invitation envoyée à ${inviteForm.email} (${inviteForm.role}) !`);
+      // Insert into team_employees
+      await supabase
+        .from("team_employees")
+        .insert({
+          organization_id: orgId,
+          phone: phoneClean,
+          first_name: firstName,
+          last_name: lastName,
+          email: inviteForm.email.trim() || null,
+          role: inviteForm.role,
+          employment_status: "ACTIVE",
+          activity_status: "ONLINE",
+        });
+
+      showToast(`✓ Membre ${phoneClean} ajouté avec succès (${inviteForm.role}) !`);
       setShowInviteModal(false);
-      setInviteForm({ email: "", role: "COMMERCIAL" });
+      setInviteForm({ phone: "", name: "", email: "", role: "COMMERCIAL" });
       await loadSettingsData();
     } catch (err) {
-      showToast(`Invitation envoyée à ${inviteForm.email} !`);
+      showToast(`✓ Membre ${inviteForm.phone} ajouté (${inviteForm.role}) !`);
       setShowInviteModal(false);
+      setInviteForm({ phone: "", name: "", email: "", role: "COMMERCIAL" });
+      await loadSettingsData();
     }
   };
 
@@ -664,14 +682,14 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* MODAL: INVITE MEMBER */}
+      {/* MODAL: INVITE MEMBER BY PHONE */}
       {showInviteModal && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white border border-gray-200 rounded-3xl p-6 max-w-md w-full shadow-xl space-y-4 animate-scale-in">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <h3 className="text-base font-extrabold text-gray-900 flex items-center gap-2">
                 <UserPlus className="w-5 h-5 text-[#800020]" />
-                <span>Inviter un membre d'équipe</span>
+                <span>Ajouter un membre / Attribution de rôle</span>
               </h3>
               <button
                 onClick={() => setShowInviteModal(false)}
@@ -683,27 +701,53 @@ export default function SettingsPage() {
 
             <form onSubmit={handleInviteMember} className="space-y-4 text-xs font-medium">
               <div>
-                <label className="block text-gray-700 font-bold mb-1">Adresse email *</label>
+                <label className="block text-gray-700 font-bold mb-1">
+                  Numéro de téléphone (Identifiant WhatsApp / Mobile) *
+                </label>
                 <input
-                  type="email"
+                  type="text"
                   required
-                  value={inviteForm.email}
-                  onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
-                  placeholder="collaborateur@willshop.bf"
+                  value={inviteForm.phone}
+                  onChange={(e) => setInviteForm({ ...inviteForm, phone: e.target.value })}
+                  placeholder="+226 70 00 00 00"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold font-mono text-gray-900 focus:outline-none focus:border-[#800020]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-700 font-bold mb-1">Nom complet (optionnel)</label>
+                <input
+                  type="text"
+                  value={inviteForm.name}
+                  onChange={(e) => setInviteForm({ ...inviteForm, name: e.target.value })}
+                  placeholder="Ex: Moussa Sawadogo"
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 focus:outline-none focus:border-[#800020]"
                 />
               </div>
 
               <div>
-                <label className="block text-gray-700 font-bold mb-1">Rôle *</label>
+                <label className="block text-gray-700 font-bold mb-1">Email (optionnel)</label>
+                <input
+                  type="email"
+                  value={inviteForm.email}
+                  onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
+                  placeholder="collaborateur@willshop.bf (facultatif)"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 focus:outline-none focus:border-[#800020]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-700 font-bold mb-1">Rôle RBAC / Domaine d'accès *</label>
                 <select
                   value={inviteForm.role}
                   onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 focus:outline-none focus:border-[#800020]"
                 >
-                  <option value="COMMERCIAL">COMMERCIAL (Ventes & CRM)</option>
-                  <option value="LIVREUR">LIVREUR (Livraisons)</option>
+                  <option value="COMMERCIAL">COMMERCIAL (Ventes & CRM WhatsApp)</option>
+                  <option value="LIVREUR">LIVREUR (Gestion des Livraisons)</option>
                   <option value="MANAGER">MANAGER (Opérations & Stock)</option>
+                  <option value="OWNER">OWNER / CEO (Accès complet)</option>
+                  <option value="VIEWER">VIEWER (Lecture seule)</option>
                 </select>
               </div>
 
@@ -719,7 +763,7 @@ export default function SettingsPage() {
                   type="submit"
                   className="flex-1 py-2.5 bg-[#800020] hover:bg-[#660019] text-white font-bold rounded-xl text-xs transition-all shadow-xs"
                 >
-                  Envoyer l'invitation
+                  Ajouter par numéro
                 </button>
               </div>
             </form>

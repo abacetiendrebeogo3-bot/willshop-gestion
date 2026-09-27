@@ -888,6 +888,20 @@ export default function TeamCockpitPage() {
                 </div>
               )}
 
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Numéro de Téléphone (Identifiant WhatsApp / Mobile) *
+                </label>
+                <input
+                  type="text"
+                  value={empPhone}
+                  onChange={(e) => setEmpPhone(e.target.value)}
+                  placeholder="+226 70 00 00 00"
+                  required
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold font-mono text-gray-900 focus:outline-none focus:border-[#800020]"
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Prénom *</label>
@@ -915,15 +929,18 @@ export default function TeamCockpitPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Téléphone *</label>
-                  <input
-                    type="text"
-                    value={empPhone}
-                    onChange={(e) => setEmpPhone(e.target.value)}
-                    placeholder="+226 70 00 00 00"
-                    required
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#800020]"
-                  />
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Rôle RBAC / Accès *</label>
+                  <select
+                    value={empRole}
+                    onChange={(e: any) => setEmpRole(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-900 focus:outline-none focus:border-[#800020]"
+                  >
+                    <option value="COMMERCIAL">COMMERCIAL (Ventes & CRM)</option>
+                    <option value="MANAGER">MANAGER (Opérations & Stock)</option>
+                    <option value="LIVREUR">LIVREUR (Livraisons)</option>
+                    <option value="OWNER">OWNER / CEO (Accès complet)</option>
+                    <option value="VIEWER">VIEWER (Lecture seule)</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Email (optionnel)</label>
@@ -931,37 +948,21 @@ export default function TeamCockpitPage() {
                     type="email"
                     value={empEmail}
                     onChange={(e) => setEmpEmail(e.target.value)}
-                    placeholder="jean@willshop.bf"
+                    placeholder="jean@willshop.bf (facultatif)"
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#800020]"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Poste / Fonction</label>
-                  <input
-                    type="text"
-                    value={empJobTitle}
-                    onChange={(e) => setEmpJobTitle(e.target.value)}
-                    placeholder="ex: Commercial Terrain"
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#800020]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Rôle RBAC *</label>
-                  <select
-                    value={empRole}
-                    onChange={(e: any) => setEmpRole(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#800020]"
-                  >
-                    <option value="COMMERCIAL">COMMERCIAL</option>
-                    <option value="MANAGER">MANAGER</option>
-                    <option value="LIVREUR">LIVREUR</option>
-                    <option value="OWNER">OWNER / CEO</option>
-                    <option value="VIEWER">VIEWER</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Poste / Fonction (optionnel)</label>
+                <input
+                  type="text"
+                  value={empJobTitle}
+                  onChange={(e) => setEmpJobTitle(e.target.value)}
+                  placeholder="ex: Commercial Terrain, Responsible Ventes..."
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#800020]"
+                />
               </div>
 
               <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
