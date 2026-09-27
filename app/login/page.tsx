@@ -91,90 +91,74 @@ export default function LoginPage() {
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    const targetEmail = email.includes("@")
-      ? email.trim()
-      : `${email.replace(/[^\d]/g, "")}@willshop.bf`;
+    const inputVal = email.trim();
+    const cleanDigits = inputVal.replace(/[^\d]/g, "");
+    const targetEmail = inputVal.includes("@")
+      ? inputVal
+      : `${cleanDigits}@willshop.bf`;
 
     try {
       const supabase = createClient();
 
       // 1. Attempt standard password login
-      let { data, error } = await supabase.auth.signInWithPassword({
+      let loginRes = await supabase.auth.signInWithPassword({
         email: targetEmail,
         password,
       });
 
-      // 2. If login failed and user is invited / new, auto-activate Supabase Auth account!
-      if (error && (invitedMember || email.trim().length > 3)) {
-        let lookupEmp = invitedMember;
-        if (!lookupEmp) {
-          const cleanDigits = email.replace(/[^\d]/g, "");
-          const { data: empData } = await supabase
-            .from("team_employees")
-            .select("*, organizations(name)")
-            .or(`phone.eq.${email.trim()},phone.eq.+${cleanDigits}`)
-            .limit(1)
-            .maybeSingle();
-          lookupEmp = empData;
-        }
-
-        if (lookupEmp) {
-          // Register Supabase Auth user
-          const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
-            email: targetEmail,
-            password,
-            options: {
-              data: {
-                first_name: lookupEmp.first_name,
-                last_name: lookupEmp.last_name,
-                phone: lookupEmp.phone,
-              },
-            },
+      // 2. If standard login failed, auto-activate using backend API (admin privileges skip email confirmation)
+      if (loginRes.error) {
+        try {
+          const activateReq = await fetch("/api/team/activate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              phoneOrEmail: inputVal,
+              password,
+            }),
           });
 
-          if (!signUpErr && signUpData.user) {
-            // Assign pre-configured organization role
-            await supabase.from("user_organization_roles").insert({
-              organization_id: lookupEmp.organization_id,
-              user_id: signUpData.user.id,
-              role: lookupEmp.role || "COMMERCIAL",
-            });
-
-            // Update employee link
-            await supabase
-              .from("team_employees")
-              .update({ user_id: signUpData.user.id })
-              .eq("id", lookupEmp.id);
-
-            // Retry sign in
-            const retryRes = await supabase.auth.signInWithPassword({
-              email: targetEmail,
-              password,
-            });
-            data = retryRes.data;
-            error = retryRes.error;
+          if (activateReq.ok) {
+            const actData = await activateReq.json();
+            if (actData?.success && actData?.email) {
+              // Retry sign in with canonical activated email
+              loginRes = await supabase.auth.signInWithPassword({
+                email: actData.email,
+                password,
+              });
+            }
+          } else {
+            const actErr = await activateReq.json().catch(() => ({}));
+            if (actErr?.error && !actErr.error.includes("Aucune invitation")) {
+              setErrorMsg(actErr.error);
+              setIsLoading(false);
+              return;
+            }
           }
+        } catch (_actErr) {
+          // Ignore activation fetch errors and proceed to original login error handling
         }
       }
 
-      if (error) {
-        let msg = error.message;
+      if (loginRes.error) {
+        let msg = loginRes.error.message;
         if (msg.includes("Invalid login credentials")) {
-          msg = "Mot de passe incorrect ou compte non encore activé. Si c'est votre première connexion, créez votre mot de passe.";
+          msg = "Mot de passe incorrect ou compte non encore activé. Si vous avez reçu une invitation par WhatsApp, vérifiez votre mot de passe.";
         } else if (msg.includes("Email not confirmed")) {
-          msg = "Votre compte est en cours d'activation. Veuillez vous reconnecter.";
+          msg = "Votre compte est en cours d'activation. Veuillez réessayer dans un instant.";
         }
         setErrorMsg(msg);
         setIsLoading(false);
         return;
       }
 
-      if (data?.user?.id) {
+      const sessionUser = loginRes.data?.user;
+      if (sessionUser?.id) {
         try {
           const { data: roles } = await supabase
             .from("user_organization_roles")
             .select("role")
-            .eq("user_id", data.user.id)
+            .eq("user_id", sessionUser.id)
             .is("deleted_at", null)
             .limit(1);
 
