@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Download, X, CheckCircle2, Share, Smartphone, PlusSquare } from "lucide-react";
+import { Download, X, CheckCircle2, Share, Smartphone, PlusSquare, ShoppingBag } from "lucide-react";
 
 export function PwaInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -26,8 +26,8 @@ export function PwaInstallPrompt() {
     const dismissedAt = localStorage.getItem("willshop_pwa_prompt_dismissed");
     if (dismissedAt) {
       const daysSinceDismiss = (Date.now() - parseInt(dismissedAt, 10)) / (1000 * 3600 * 24);
-      if (daysSinceDismiss < 7) {
-        return; // Don't show again within 7 days
+      if (daysSinceDismiss < 3) {
+        return; // Don't show again within 3 days
       }
     }
 
@@ -90,11 +90,11 @@ export function PwaInstallPrompt() {
 
   return (
     <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-50 animate-slide-in">
-      <div className="bg-[#12121A] border border-[#7B61FF]/40 rounded-3xl p-5 shadow-2xl space-y-4 backdrop-blur-xl relative">
+      <div className="bg-[#1F1917] border border-[#D4A843]/40 rounded-3xl p-5 shadow-2xl space-y-4 backdrop-blur-xl relative text-white">
         {/* Close Button */}
         <button
           onClick={handleDismiss}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white p-1 rounded-full hover:bg-[#181824] transition-colors"
+          className="absolute top-4 right-4 text-stone-400 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors"
           aria-label="Fermer"
         >
           <X className="w-4 h-4" />
@@ -103,34 +103,36 @@ export function PwaInstallPrompt() {
         {isInstalledSuccess ? (
           /* SUCCESS STATE */
           <div className="space-y-3 pr-6">
-            <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm font-mono">
+            <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
               <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-400" />
-              <span>WILLShop est installé !</span>
+              <span>WILLShop OS est installé !</span>
             </div>
-            <p className="text-xs text-gray-300 font-mono">
-              Vous pouvez maintenant ouvrir l&apos;application directement depuis l&apos;écran d&apos;accueil de votre téléphone.
+            <p className="text-xs text-stone-300 font-medium">
+              L&apos;application est accessible directement depuis l&apos;écran d&apos;accueil de votre téléphone.
             </p>
           </div>
         ) : isIosSafari ? (
           /* SAFARI IOS INSTRUCTIONS STATE */
           <div className="space-y-3 pr-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-[#7B61FF] text-white flex items-center justify-center font-bold font-mono text-lg shrink-0">
-                W
-              </div>
+              <img
+                src="/logo.jpg"
+                alt="WILLShop OS Logo"
+                className="w-11 h-11 rounded-2xl object-cover ring-2 ring-[#D4A843] shadow-md shrink-0"
+              />
               <div>
-                <h4 className="font-bold text-white text-sm">Installer WILLShop OS</h4>
-                <p className="text-[11px] text-gray-400 font-mono">Application web pour iPhone</p>
+                <h4 className="font-extrabold text-white text-sm">Installer WILLShop OS</h4>
+                <p className="text-[11px] text-[#D4A843] font-semibold">Application iPhone & iPad</p>
               </div>
             </div>
 
-            <div className="p-3 bg-[#0A0A14] border border-[#242436] rounded-2xl space-y-2 text-xs font-mono text-gray-300">
+            <div className="p-3 bg-[#800020]/30 border border-[#D4A843]/30 rounded-2xl space-y-2 text-xs text-stone-200">
               <p className="font-bold text-white flex items-center gap-1.5">
-                <Share className="w-4 h-4 text-[#7B61FF]" /> Instructions Safari :
+                <Share className="w-4 h-4 text-[#D4A843]" /> Instructions d&apos;installation Safari :
               </p>
-              <ol className="list-decimal list-inside space-y-1 text-[11px] text-gray-400">
-                <li>Appuyez sur le bouton <span className="text-white font-bold font-sans">Partager ⎘</span> dans Safari.</li>
-                <li>Faites défiler et sélectionnez <span className="text-white font-bold font-sans">&apos;Sur l&apos;écran d&apos;accueil&apos; ➕</span>.</li>
+              <ol className="list-decimal list-inside space-y-1 text-[11px] text-stone-300 font-medium">
+                <li>Appuyez sur l&apos;icône <span className="text-white font-bold">Partager ⎘</span> au bas de votre écran.</li>
+                <li>Faites défiler vers le bas et appuyez sur <span className="text-white font-bold">&apos;Sur l&apos;écran d&apos;accueil&apos; ➕</span>.</li>
               </ol>
             </div>
           </div>
@@ -138,29 +140,31 @@ export function PwaInstallPrompt() {
           /* ANDROID / CHROME INSTALL STATE */
           <div className="space-y-4">
             <div className="flex items-center gap-3 pr-6">
-              <div className="w-10 h-10 rounded-2xl bg-[#7B61FF] text-white flex items-center justify-center font-bold font-mono text-lg shrink-0 shadow-lg">
-                W
-              </div>
+              <img
+                src="/logo.jpg"
+                alt="WILLShop OS Logo"
+                className="w-11 h-11 rounded-2xl object-cover ring-2 ring-[#D4A843] shadow-md shrink-0"
+              />
               <div>
-                <h4 className="font-bold text-white text-sm">WILLShop OS</h4>
-                <p className="text-[11px] text-gray-400 font-mono">
-                  Votre espace de travail, directement sur votre téléphone.
+                <h4 className="font-extrabold text-white text-sm">WILLShop OS</h4>
+                <p className="text-[11px] text-stone-300 font-medium">
+                  Installez l&apos;application sur votre écran d&apos;accueil
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 font-mono text-xs pt-1">
+            <div className="flex items-center gap-2 text-xs pt-1">
               <button
                 onClick={handleInstallClick}
-                className="flex-1 py-3 px-4 bg-[#7B61FF] hover:bg-[#684DFE] text-white font-bold rounded-2xl transition-all shadow-lg flex items-center justify-center gap-2"
+                className="flex-1 py-3 px-4 bg-[#800020] hover:bg-[#660019] text-white font-extrabold rounded-2xl transition-all shadow-md flex items-center justify-center gap-2 border border-[#D4A843]/40 cursor-pointer"
               >
-                <Download className="w-4 h-4" />
-                Installer WILLShop
+                <Download className="w-4 h-4 text-[#D4A843]" />
+                Installer l&apos;Application
               </button>
 
               <button
                 onClick={handleDismiss}
-                className="py-3 px-4 bg-[#181824] hover:bg-[#242436] text-gray-400 hover:text-white font-medium rounded-2xl transition-colors"
+                className="py-3 px-4 bg-white/10 hover:bg-white/20 text-stone-300 hover:text-white font-bold rounded-2xl transition-colors cursor-pointer"
               >
                 Plus tard
               </button>
