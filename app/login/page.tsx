@@ -23,10 +23,30 @@ export default function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
 
+  const [invitedPhone, setInvitedPhone] = useState<string | null>(null);
+  const [invitedMember, setInvitedMember] = useState<any | null>(null);
+
   useEffect(() => {
     const supabase = createClient();
 
-    // Listen for PASSWORD_RECOVERY event when user clicks the reset link in email
+    // Check URL parameters for ?phone=...
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      const phoneParam = searchParams.get("phone");
+      if (phoneParam) {
+        const cleanPhone = phoneParam.trim();
+        setInvitedPhone(cleanPhone);
+        setEmail(cleanPhone);
+        checkInvitedMember(cleanPhone);
+      }
+
+      const hash = window.location.hash;
+      const search = window.location.search;
+      if (hash.includes("type=recovery") || search.includes("type=recovery") || search.includes("reset=true")) {
+        setIsUpdatePasswordMode(true);
+      }
+    }
+
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "PASSWORD_RECOVERY") {
         setIsUpdatePasswordMode(true);
@@ -35,24 +55,35 @@ export default function LoginPage() {
       }
     });
 
-    // Also check URL parameters and hash fragment (#access_token=...&type=recovery)
-    if (typeof window !== "undefined") {
-      const hash = window.location.hash;
-      const search = window.location.search;
-      if (hash.includes("type=recovery") || search.includes("type=recovery") || search.includes("reset=true")) {
-        setIsUpdatePasswordMode(true);
-      }
-    }
-
     return () => {
       authListener?.subscription?.unsubscribe();
     };
   }, []);
 
+  const checkInvitedMember = async (phoneStr: string) => {
+    try {
+      const supabase = createClient();
+      const cleanDigits = phoneStr.replace(/[^\d]/g, "");
+      const { data: emp } = await supabase
+        .from("team_employees")
+        .select("*, organizations(name)")
+        .or(`phone.eq.${phoneStr},phone.eq.+${cleanDigits}`)
+        .limit(1)
+        .maybeSingle();
+
+      if (emp) {
+        setInvitedMember(emp);
+        setSuccessMsg(`📲 Bienvenue ${emp.first_name || ""} ! Vous avez été invité(e) dans l'entreprise "${emp.organizations?.name || "WILLShop"}". Saisissez votre mot de passe ci-dessous pour activer votre accès.`);
+      }
+    } catch (_e) {
+      // Ignore
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password) {
-      setErrorMsg("Veuillez remplir votre email et votre mot de passe.");
+      setErrorMsg("Veuillez remplir votre identifiant et votre mot de passe.");
       return;
     }
 
@@ -60,23 +91,78 @@ export default function LoginPage() {
     setErrorMsg(null);
     setSuccessMsg(null);
 
+    const targetEmail = email.includes("@")
+      ? email.trim()
+      : `${email.replace(/[^\d]/g, "")}@willshop.bf`;
+
     try {
       const supabase = createClient();
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+
+      // 1. Attempt standard password login
+      let { data, error } = await supabase.auth.signInWithPassword({
+        email: targetEmail,
         password,
       });
+
+      // 2. If login failed and user is invited / new, auto-activate Supabase Auth account!
+      if (error && (invitedMember || email.trim().length > 3)) {
+        let lookupEmp = invitedMember;
+        if (!lookupEmp) {
+          const cleanDigits = email.replace(/[^\d]/g, "");
+          const { data: empData } = await supabase
+            .from("team_employees")
+            .select("*, organizations(name)")
+            .or(`phone.eq.${email.trim()},phone.eq.+${cleanDigits}`)
+            .limit(1)
+            .maybeSingle();
+          lookupEmp = empData;
+        }
+
+        if (lookupEmp) {
+          // Register Supabase Auth user
+          const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+            email: targetEmail,
+            password,
+            options: {
+              data: {
+                first_name: lookupEmp.first_name,
+                last_name: lookupEmp.last_name,
+                phone: lookupEmp.phone,
+              },
+            },
+          });
+
+          if (!signUpErr && signUpData.user) {
+            // Assign pre-configured organization role
+            await supabase.from("user_organization_roles").insert({
+              organization_id: lookupEmp.organization_id,
+              user_id: signUpData.user.id,
+              role: lookupEmp.role || "COMMERCIAL",
+            });
+
+            // Update employee link
+            await supabase
+              .from("team_employees")
+              .update({ user_id: signUpData.user.id })
+              .eq("id", lookupEmp.id);
+
+            // Retry sign in
+            const retryRes = await supabase.auth.signInWithPassword({
+              email: targetEmail,
+              password,
+            });
+            data = retryRes.data;
+            error = retryRes.error;
+          }
+        }
+      }
 
       if (error) {
         let msg = error.message;
         if (msg.includes("Invalid login credentials")) {
-          msg = "Mot de passe incorrect ou compte inexistant. Veuillez vérifier vos identifiants.";
+          msg = "Mot de passe incorrect ou compte non encore activé. Si c'est votre première connexion, créez votre mot de passe.";
         } else if (msg.includes("Email not confirmed")) {
-          msg = "Votre adresse email n'est pas encore confirmée. Veuillez vérifier votre boîte de réception.";
-        } else if (msg.includes("User not found")) {
-          msg = "Aucun compte trouvé avec cette adresse email.";
-        } else if (msg.includes("Too many requests") || msg.includes("rate limit")) {
-          msg = "Trop de tentatives de connexion. Veuillez patienter un instant avant de réessayer.";
+          msg = "Votre compte est en cours d'activation. Veuillez vous reconnecter.";
         }
         setErrorMsg(msg);
         setIsLoading(false);
@@ -108,7 +194,7 @@ export default function LoginPage() {
             }
           }
         } catch (_e) {
-          // Ignore role query error, fall through to workspace-select
+          // Ignore
         }
       }
 
@@ -324,17 +410,26 @@ export default function LoginPage() {
                 </div>
               )}
 
+              {successMsg && (
+                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 text-xs font-medium flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600" />
+                  <span>{successMsg}</span>
+                </div>
+              )}
+
               <form onSubmit={handleLogin} className="space-y-4 text-xs font-medium">
                 <div>
-                  <label className="block text-stone-700 font-bold mb-1.5">Adresse e-mail</label>
+                  <label className="block text-stone-700 font-bold mb-1.5">
+                    Numéro de Téléphone WhatsApp ou Email
+                  </label>
                   <div className="relative">
                     <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
                     <input
-                      type="email"
+                      type="text"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="votre@email.com"
+                      placeholder="+226 70 00 00 00 ou votre@email.com"
                       className="w-full bg-[#F8F5EE] border border-[#EBE5DA] rounded-xl pl-10 pr-4 py-2.5 font-bold text-[#1F1917] focus:outline-none focus:border-[#800020] focus:ring-2 focus:ring-[#800020]/20"
                     />
                   </div>
