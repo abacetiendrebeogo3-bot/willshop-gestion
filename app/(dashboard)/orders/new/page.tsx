@@ -43,6 +43,8 @@ interface CustomerOption {
 import { useEffect } from "react";
 import { createClient } from "@/src/infrastructure/supabase/client";
 
+export const dynamic = "force-dynamic";
+
 export default function NewOrderPage() {
   const router = useRouter();
 
@@ -140,8 +142,9 @@ export default function NewOrderPage() {
   };
 
   const selectedCustomer = useMemo(() => {
-    return customersList.find((c) => c.id === selectedCustomerId) || customersList[0];
-  }, [selectedCustomerId]);
+    if (!customersList || customersList.length === 0) return null;
+    return customersList.find((c) => c.id === selectedCustomerId) || customersList[0] || null;
+  }, [customersList, selectedCustomerId]);
 
   // Dynamic calculations
   const subtotal = useMemo(() => {
@@ -317,7 +320,7 @@ export default function NewOrderPage() {
             </span>
           </div>
           <p className="text-gray-700">
-            Origine : {selectedCustomer.whatsappConv}. Vérifiez attentivement les quantités et la disponibilité du stock physique avant de confirmer.
+            Origine : {selectedCustomer?.whatsappConv || "Intention WhatsApp"}. Vérifiez attentivement les quantités et la disponibilité du stock physique avant de confirmer.
           </p>
         </div>
       </div>
@@ -347,10 +350,10 @@ export default function NewOrderPage() {
 
           <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 space-y-1">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-gray-900">{selectedCustomer.name}</span>
-              <span className="font-mono text-gray-500">{selectedCustomer.phone}</span>
+              <span className="font-bold text-gray-900">{selectedCustomer?.name || "Client non sélectionné"}</span>
+              <span className="font-mono text-gray-500">{selectedCustomer?.phone || "-"}</span>
             </div>
-            <p className="text-[11px] text-gray-500">{selectedCustomer.whatsappConv}</p>
+            <p className="text-[11px] text-gray-500">{selectedCustomer?.whatsappConv || "Aucune conversation liée"}</p>
           </div>
         </div>
       </div>
@@ -376,7 +379,8 @@ export default function NewOrderPage() {
           {rows.map((row, index) => {
             const currentProd = catalog.find((p) => p.id === row.productId) || catalog[0];
             const lineTotal = Math.round(row.quantity * row.unitPrice);
-            const isStockOk = currentProd.availableStock >= row.quantity;
+            const availableStock = currentProd?.availableStock ?? 0;
+            const isStockOk = availableStock >= row.quantity;
 
             return (
               <div
@@ -454,15 +458,15 @@ export default function NewOrderPage() {
                     <span className="font-medium text-gray-500">Vérification stock :</span>
                     {isStockOk ? (
                       <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Stock disponible ({currentProd.availableStock} unités) ✅
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Stock disponible ({availableStock} unités) ✅
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 font-bold text-rose-700 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200">
-                        <AlertTriangle className="w-3.5 h-3.5" /> ⚠️ Stock insuffisant ({currentProd.availableStock} unités en stock)
+                        <AlertTriangle className="w-3.5 h-3.5" /> ⚠️ Stock insuffisant ({availableStock} unités en stock)
                       </span>
                     )}
                   </div>
-                  <span className="text-gray-400 font-mono">SKU: {currentProd.sku}</span>
+                  <span className="text-gray-400 font-mono">SKU: {currentProd?.sku || "-"}</span>
                 </div>
               </div>
             );
