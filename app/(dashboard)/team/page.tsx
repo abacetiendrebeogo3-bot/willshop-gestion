@@ -146,6 +146,11 @@ export default function TeamCockpitPage() {
     }
   }
 
+  // Blocker Modal State
+  const [isBlockerModalOpen, setIsBlockerModalOpen] = useState(false);
+  const [selectedTaskToBlock, setSelectedTaskToBlock] = useState<any>(null);
+  const [blockerReasonInput, setBlockerReasonInput] = useState("");
+
   useEffect(() => {
     loadTeamData();
   }, []);
