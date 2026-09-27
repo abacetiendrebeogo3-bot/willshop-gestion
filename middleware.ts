@@ -7,58 +7,88 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 function getSupabaseSession(request: NextRequest): { userId: string } | null {
   const allCookies = request.cookies.getAll();
-  let authCookieValue = '';
+  const cookieMap = new Map<string, string>();
+  const chunkMap = new Map<string, { idx: number; val: string }[]>();
 
-  const authCookie = allCookies.find(
-    (c) => c.name.includes('-auth-token') && !c.name.includes('-auth-token.')
-  );
+  for (const c of allCookies) {
+    const name = c.name;
+    const val = c.value;
+    cookieMap.set(name, val);
 
-  if (authCookie) {
-    authCookieValue = authCookie.value;
-  } else {
-    const chunks = allCookies
-      .filter((c) => c.name.includes('-auth-token.'))
-      .sort((a, b) => {
-        const idxA = parseInt(a.name.split('.').pop() || '0', 10);
-        const idxB = parseInt(b.name.split('.').pop() || '0', 10);
-        return idxA - idxB;
-      });
-    if (chunks.length > 0) {
-      authCookieValue = chunks.map((c) => c.value).join('');
+    if (name.includes('-auth-token.')) {
+      const parts = name.split('-auth-token.');
+      const prefix = parts[0];
+      const chunkIdx = parseInt(parts[1], 10);
+      if (!chunkMap.has(prefix)) chunkMap.set(prefix, []);
+      chunkMap.get(prefix)!.push({ idx: chunkIdx, val });
     }
   }
 
-  if (!authCookieValue) return null;
+  // Combine chunked cookies into single string candidates
+  const candidates: string[] = [];
+  for (const [, chunks] of chunkMap.entries()) {
+    chunks.sort((a, b) => a.idx - b.idx);
+    candidates.push(chunks.map((c) => c.val).join(''));
+  }
 
-  try {
-    let parsed: any;
-    if (authCookieValue.startsWith('{') || authCookieValue.startsWith('[')) {
-      parsed = JSON.parse(authCookieValue);
-    } else if (authCookieValue.startsWith('base64-')) {
-      const decodedStr = Buffer.from(authCookieValue.substring(7), 'base64').toString('utf8');
-      parsed = JSON.parse(decodedStr);
+  // Add individual cookie values
+  for (const val of cookieMap.values()) {
+    candidates.push(val);
+  }
+
+  for (let rawVal of candidates) {
+    if (!rawVal) continue;
+
+    // Clean URI encoding & quotes
+    try {
+      rawVal = decodeURIComponent(rawVal);
+    } catch (_e) {}
+    rawVal = rawVal.replace(/^["']|["']$/g, '').trim();
+
+    if (rawVal.startsWith('base64-')) {
+      try {
+        rawVal = Buffer.from(rawVal.substring(7), 'base64').toString('utf8');
+      } catch (_e) {}
     }
 
-    const token = parsed?.access_token || (Array.isArray(parsed) ? parsed[0] : null);
-    if (!token || typeof token !== 'string') return null;
-
-    const parts = token.split('.');
-    if (parts.length < 2) return null;
-
-    const base64Url = parts[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = Buffer.from(base64, 'base64').toString('utf8');
-    const payload = JSON.parse(jsonPayload);
-
-    if (payload.exp && payload.exp * 1000 < Date.now()) {
-      return null;
+    // Try parsing as JSON or Array
+    let accessToken = '';
+    if (rawVal.startsWith('{') || rawVal.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(rawVal);
+        if (Array.isArray(parsed)) {
+          accessToken = parsed[0] || '';
+        } else if (parsed && typeof parsed === 'object') {
+          accessToken = parsed.access_token || parsed.currentSession?.access_token || '';
+        }
+      } catch (_e) {}
+    } else if (rawVal.split('.').length === 3) {
+      accessToken = rawVal;
     }
 
-    if (payload.sub) {
-      return { userId: payload.sub };
+    if (!accessToken && rawVal.includes('eyJ')) {
+      // Find JWT substring starting with eyJ
+      const match = rawVal.match(/eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/);
+      if (match) {
+        accessToken = match[0];
+      }
     }
-  } catch (_e) {
-    // Ignore invalid cookie format
+
+    if (accessToken && accessToken.split('.').length === 3) {
+      try {
+        const parts = accessToken.split('.');
+        const payloadBase64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const payloadJson = Buffer.from(payloadBase64, 'base64').toString('utf8');
+        const payload = JSON.parse(payloadJson);
+
+        if (payload && payload.sub) {
+          // Check expiration with 10s leeway
+          if (!payload.exp || payload.exp * 1000 > Date.now() - 10000) {
+            return { userId: payload.sub };
+          }
+        }
+      } catch (_e) {}
+    }
   }
 
   return null;

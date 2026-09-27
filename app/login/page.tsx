@@ -83,6 +83,35 @@ export default function LoginPage() {
         return;
       }
 
+      if (data?.user?.id) {
+        try {
+          const { data: roles } = await supabase
+            .from("user_organization_roles")
+            .select("role")
+            .eq("user_id", data.user.id)
+            .is("deleted_at", null)
+            .limit(1);
+
+          if (roles && roles.length > 0) {
+            const userRole = roles[0].role;
+            document.cookie = `willshop_role=${userRole}; path=/; max-age=${86400 * 7}; SameSite=Lax`;
+
+            if (userRole === "COMMERCIAL" || userRole === "SALES") {
+              window.location.href = "/sales/my-day";
+              return;
+            } else if (userRole === "LIVREUR" || userRole === "DRIVER") {
+              window.location.href = "/delivery/my-deliveries";
+              return;
+            } else {
+              window.location.href = "/ceo";
+              return;
+            }
+          }
+        } catch (_e) {
+          // Ignore role query error, fall through to workspace-select
+        }
+      }
+
       window.location.href = "/workspace-select";
     } catch (_err: any) {
       setErrorMsg(_err?.message || "Erreur de connexion.");
