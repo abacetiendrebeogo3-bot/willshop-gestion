@@ -73,108 +73,6 @@ const ASSISTANT_SUGGESTIONS = [
   "Résume l'activité de la journée",
 ];
 
-const SEED_CONVERSATIONS: Conversation[] = [
-  {
-    id: "conv-awa-kone",
-    customerName: "Awa Koné",
-    phoneNumber: "+226 77 12 34 56",
-    lastMessage: "Bonjour, est-ce que le riz 5kg est toujours disponible ?",
-    time: "10:24",
-    tag: "TRES_INTERESSES",
-    unreadCount: 1,
-    fromWhatsApp: true,
-    avatarInitials: "AK",
-    avatarColor: "bg-rose-100 text-rose-700",
-  },
-  {
-    id: "conv-moussa-traore",
-    customerName: "Moussa Traoré",
-    phoneNumber: "+226 78 88 99 00",
-    lastMessage: "Je veux 2 cartons d'huile. C'est combien ?",
-    time: "11:15",
-    tag: "PRETS_A_COMMANDER",
-    unreadCount: 0,
-    fromWhatsApp: true,
-    avatarInitials: "MT",
-    avatarColor: "bg-emerald-100 text-emerald-700",
-  },
-  {
-    id: "conv-fatou-diarra",
-    customerName: "Fatou Diarra",
-    phoneNumber: "+226 70 55 44 33",
-    lastMessage: "Ma commande est prête ?",
-    time: "12:08",
-    tag: "A_RELANCER",
-    unreadCount: 2,
-    fromWhatsApp: true,
-    avatarInitials: "FD",
-    avatarColor: "bg-blue-100 text-blue-700",
-  },
-  {
-    id: "conv-ibrahim-sanogo",
-    customerName: "Ibrahim Sanogo",
-    phoneNumber: "+226 70 12 34 56",
-    lastMessage: "Vous livrez à Bobo ?",
-    time: "09:40",
-    tag: "SCEPTIQUES",
-    unreadCount: 0,
-    fromWhatsApp: false,
-    avatarInitials: "IB",
-    avatarColor: "bg-purple-100 text-purple-700",
-  },
-  {
-    id: "conv-sofia-compaore",
-    customerName: "Sofia Compaoré",
-    phoneNumber: "+226 76 34 12 90",
-    lastMessage: "C'est vraiment efficace ?",
-    time: "Hier",
-    tag: "EN_ATTENTE",
-    unreadCount: 0,
-    fromWhatsApp: true,
-    avatarInitials: "SC",
-    avatarColor: "bg-amber-100 text-amber-700",
-  },
-  {
-    id: "conv-yacine-k",
-    customerName: "Yacine K.",
-    phoneNumber: "+226 71 22 44 66",
-    lastMessage: "J'attends la confirmation du paiement.",
-    time: "Hier",
-    tag: "PRETS_A_COMMANDER",
-    unreadCount: 1,
-    fromWhatsApp: true,
-    avatarInitials: "YK",
-    avatarColor: "bg-indigo-100 text-indigo-700",
-  },
-  {
-    id: "conv-issa-pare",
-    customerName: "Issa Paré",
-    phoneNumber: "+226 70 99 88 77",
-    lastMessage: "Vous avez un point de vente à Bobo ?",
-    time: "Hier",
-    tag: "A_RELANCER",
-    unreadCount: 0,
-    fromWhatsApp: false,
-    avatarInitials: "IP",
-    avatarColor: "bg-teal-100 text-teal-700",
-  },
-];
-
-const SEED_MESSAGES: Record<string, Message[]> = {
-  "conv-awa-kone": [
-    { id: "m1", direction: "INBOUND", senderType: "CLIENT", content: "Bonjour, est-ce que le riz 5kg est toujours disponible ?", time: "10:24" },
-    { id: "m2", direction: "OUTBOUND", senderType: "AI", content: "Oui, il est disponible à 12 500 XOF. Souhaitez-vous en prendre ?", status: "READ", time: "10:25" },
-    { id: "m3", direction: "INBOUND", senderType: "CLIENT", content: "D'accord, je prends 2 sacs.", time: "10:26" },
-  ],
-  "conv-moussa-traore": [
-    { id: "m4", direction: "INBOUND", senderType: "CLIENT", content: "Je veux 2 cartons d'huile 5L. C'est combien ?", time: "11:15" },
-    { id: "m5", direction: "OUTBOUND", senderType: "AI", content: "Bonjour Moussa ! 2 cartons d'huile 5L = 18 000 XOF. Livraison incluse dans Ouaga.", status: "DELIVERED", time: "11:16" },
-  ],
-  "conv-fatou-diarra": [
-    { id: "m6", direction: "INBOUND", senderType: "CLIENT", content: "Ma commande est prête ?", time: "12:08" },
-  ],
-};
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function ConversationsPage() {
@@ -188,7 +86,7 @@ export default function ConversationsPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   // Conversations state
-  const [conversations, setConversations] = useState<Conversation[]>(SEED_CONVERSATIONS);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -211,10 +109,9 @@ export default function ConversationsPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const assistantEndRef = useRef<HTMLDivElement>(null);
 
-  // Load data from Supabase (with seed fallback)
+  // Load data from Supabase
   useEffect(() => {
     loadConversations();
-    // Show assistant suggestion after 2s
     const t = setTimeout(() => setAssistantHasSuggestion(true), 2000);
     return () => clearTimeout(t);
   }, []);
@@ -240,18 +137,35 @@ export default function ConversationsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setIsLoading(false); return; }
 
-      const { data: member } = await supabase
-        .from("organization_members")
+      let orgId: string | null = null;
+      const { data: roleData } = await supabase
+        .from("user_organization_roles")
         .select("organization_id")
         .eq("user_id", user.id)
-        .single();
+        .is("deleted_at", null)
+        .limit(1);
 
-      if (!member) { setIsLoading(false); return; }
+      if (roleData && roleData.length > 0) {
+        orgId = roleData[0].organization_id;
+      } else {
+        const { data: member } = await supabase
+          .from("organization_members")
+          .select("organization_id")
+          .eq("user_id", user.id)
+          .single();
+        if (member) orgId = member.organization_id;
+      }
+
+      if (!orgId) {
+        setConversations([]);
+        setIsLoading(false);
+        return;
+      }
 
       const { data: convsData } = await supabase
         .from("whatsapp_conversations")
         .select("*")
-        .eq("organization_id", member.organization_id)
+        .eq("organization_id", orgId)
         .order("updated_at", { ascending: false });
 
       if (convsData && convsData.length > 0) {
@@ -260,28 +174,56 @@ export default function ConversationsPage() {
           customerName: c.customer_name || c.phone_number || "Client Inconnu",
           phoneNumber: c.phone_number || "Inconnu",
           lastMessage: c.last_message || "...",
-          time: new Date(c.updated_at || Date.now()).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
+          time: c.updated_at ? new Date(c.updated_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "",
           tag: (c.tag as CustomerTag) || "EN_ATTENTE",
           unreadCount: c.unread_count || 0,
           fromWhatsApp: true,
-          avatarInitials: (c.customer_name || "?").substring(0, 2).toUpperCase(),
+          avatarInitials: (c.customer_name || c.phone_number || "?").substring(0, 2).toUpperCase(),
           avatarColor: "bg-[#800020]/10 text-[#800020]",
         }));
         setConversations(formatted);
+      } else {
+        setConversations([]);
       }
     } catch (e) {
-      // Keep seed data on error
+      setConversations([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const loadMessages = (conv: Conversation) => {
+  const loadMessages = async (conv: Conversation) => {
     setSelectedConv(conv);
     setShowChat(true);
-    setMessages(SEED_MESSAGES[conv.id] || [
-      { id: "default", direction: "INBOUND", senderType: "CLIENT", content: conv.lastMessage, time: conv.time },
-    ]);
+
+    try {
+      const supabase = createClient();
+      const { data: msgsData } = await supabase
+        .from("whatsapp_messages")
+        .select("*")
+        .eq("conversation_id", conv.id)
+        .order("created_at", { ascending: true });
+
+      if (msgsData && msgsData.length > 0) {
+        const formattedMsgs: Message[] = msgsData.map((m: any) => ({
+          id: m.id,
+          direction: m.direction || (m.sender_type === "CLIENT" ? "INBOUND" : "OUTBOUND"),
+          senderType: m.sender_type || "CLIENT",
+          content: m.content || "",
+          status: m.status || "DELIVERED",
+          time: m.created_at ? new Date(m.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "",
+        }));
+        setMessages(formattedMsgs);
+      } else {
+        setMessages([
+          { id: "default", direction: "INBOUND", senderType: "CLIENT", content: conv.lastMessage, time: conv.time },
+        ]);
+      }
+    } catch (_e) {
+      setMessages([
+        { id: "default", direction: "INBOUND", senderType: "CLIENT", content: conv.lastMessage, time: conv.time },
+      ]);
+    }
   };
 
   // ─── Filtering ────────────────────────────────────────────────────────────

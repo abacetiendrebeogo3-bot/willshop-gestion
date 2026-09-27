@@ -42,85 +42,86 @@ export interface OrderRow {
   deliveryAddress?: string;
 }
 
+import { useEffect } from "react";
+import { createClient } from "@/src/infrastructure/supabase/client";
+
 export default function OrdersListPage() {
   const router = useRouter();
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Mock list of orders representing the complete lifecycle
-  const ordersList: OrderRow[] = [
-    {
-      id: "ord-2026-001",
-      orderNumber: "#CMD-2026-0014",
-      customerName: "Awa Koné",
-      phone: "+226 70 12 34 56",
-      totalTTC: 25000,
-      status: "ORDER_CONFIRMED",
-      itemsCount: 2,
-      createdAt: "24 sept. 2026 à 14:32",
-      deliveryDriver: "Issa Nikiema",
-      deliveryAddress: "Ouagadougou Centre",
-    },
-    {
-      id: "ord-2026-002",
-      orderNumber: "#CMD-2026-0015",
-      customerName: "Moussa Traoré",
-      phone: "+226 71 23 45 67",
-      totalTTC: 45000,
-      status: "ORDER_INTENT",
-      itemsCount: 1,
-      createdAt: "26 sept. 2026 à 10:15",
-    },
-    {
-      id: "ord-2026-003",
-      orderNumber: "#CMD-2026-0016",
-      customerName: "Fatou Diarra",
-      phone: "+226 76 34 56 78",
-      totalTTC: 18500,
-      status: "IN_TRANSIT",
-      itemsCount: 3,
-      createdAt: "25 sept. 2026 à 16:40",
-      deliveryDriver: "Issa Nikiema",
-      deliveryAddress: "Ouaga 2000 Zone B",
-    },
-    {
-      id: "ord-2026-004",
-      orderNumber: "#CMD-2026-0017",
-      customerName: "Ibrahim Sanogo",
-      phone: "+226 72 45 67 89",
-      totalTTC: 36000,
-      status: "DELIVERED",
-      itemsCount: 2,
-      createdAt: "23 sept. 2026 à 09:20",
-      deliveryDriver: "Oumar Zango",
-      deliveryAddress: "Pissy Secteur 15",
-    },
-    {
-      id: "ord-2026-005",
-      orderNumber: "#CMD-2026-0018",
-      customerName: "Kassoum Sawadogo",
-      phone: "+226 78 67 89 01",
-      totalTTC: 28000,
-      status: "FAILED",
-      itemsCount: 1,
-      createdAt: "22 sept. 2026 à 11:05",
-      deliveryDriver: "Issa Nikiema",
-      deliveryAddress: "Karpala Zone C",
-    },
-    {
-      id: "ord-2026-006",
-      orderNumber: "#CMD-2026-0019",
-      customerName: "Salif Ouédraogo",
-      phone: "+226 73 78 90 12",
-      totalTTC: 52000,
-      status: "DELIVERY_CREATED",
-      itemsCount: 4,
-      createdAt: "26 sept. 2026 à 08:30",
-    },
-  ];
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  const fetchOrders = async () => {
+    setIsLoading(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
+      const { data: roleData } = await supabase
+        .from("user_organization_roles")
+        .select("organization_id")
+        .eq("user_id", user.id)
+        .is("deleted_at", null)
+        .limit(1);
+
+      const orgId = roleData && roleData.length > 0 ? roleData[0].organization_id : null;
+      if (!orgId) {
+        setIsLoading(false);
+        return;
+      }
+
+      const { data: ordersData, error } = await supabase
+        .from("orders")
+        .select("*, customer:customers(*)")
+        .eq("organization_id", orgId)
+        .order("created_at", { ascending: false });
+
+      if (error || !ordersData || ordersData.length === 0) {
+        setOrders([]);
+        setIsLoading(false);
+        return;
+      }
+
+      const formatted: OrderRow[] = ordersData.map((o: any) => {
+        const custName = o.customer?.full_name || `${o.customer?.first_name || ""} ${o.customer?.last_name || ""}`.trim() || o.customer?.phone || "Client non spécifié";
+        const custPhone = o.customer?.phone || o.customer?.whatsapp_phone || "Non renseigné";
+        const createdDateStr = o.created_at
+          ? new Date(o.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+          : "Récemment";
+
+        return {
+          id: o.id,
+          orderNumber: o.order_number || `#CMD-${o.id.substring(0, 6)}`,
+          customerName: custName,
+          phone: custPhone,
+          totalTTC: Number(o.total_ttc) || 0,
+          status: o.status || "ORDER_CONFIRMED",
+          itemsCount: 1,
+          createdAt: createdDateStr,
+          deliveryAddress: o.delivery_address || o.customer?.address || undefined,
+        };
+      });
+
+      setOrders(formatted);
+    } catch (err) {
+      console.error("[Orders List] Fetch error:", err);
+      setOrders([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const filteredOrders = useMemo(() => {
-    return ordersList.filter((o) => {
+    return orders.filter((o) => {
       if (selectedStatus !== "ALL" && o.status !== selectedStatus) return false;
 
       if (searchQuery.trim()) {
@@ -132,7 +133,7 @@ export default function OrdersListPage() {
       }
       return true;
     });
-  }, [selectedStatus, searchQuery]);
+  }, [orders, selectedStatus, searchQuery]);
 
   const getStatusBadge = (status: OrderLifecycleStatus) => {
     switch (status) {

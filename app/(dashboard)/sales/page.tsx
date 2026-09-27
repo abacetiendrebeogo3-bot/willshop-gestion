@@ -90,97 +90,107 @@ export default function ConversationsCRMPage() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // Seed data matching Screen 2 in input_file_0.png
-  const rawConversations: ConversationItem[] = [
-    {
-      id: "conv-1",
-      customerName: "Awa Koné",
-      avatarBg: "bg-rose-100 text-rose-800",
-      avatarText: "AK",
-      phone: "+226 77 12 34 56",
-      lastMessage: "Bonjour, est-ce que le riz 5kg est toujours disponible ?",
-      time: "10:24",
-      tag: "HOT_INTENT",
-      tagLabel: "Très intéressé",
-      tagStyle: "bg-rose-50 text-rose-700 border border-rose-200",
-      tagIcon: Flame,
-      unread: true,
-      productName: "Riz 5kg",
-      productPrice: "12 500 XOF",
-    },
-    {
-      id: "conv-2",
-      customerName: "Moussa Traoré",
-      avatarBg: "bg-amber-100 text-amber-800",
-      avatarText: "MT",
-      phone: "+226 78 88 99 00",
-      lastMessage: "Je veux 2 cartons d'huile. C'est combien ?",
-      time: "11:15",
-      tag: "READY_TO_ORDER",
-      tagLabel: "Prêt à commander",
-      tagStyle: "bg-emerald-50 text-emerald-700 border border-emerald-200",
-      tagIcon: CheckCircle2,
-      unread: false,
-      productName: "Huile 5L (Carton)",
-      productPrice: "24 000 XOF",
-    },
-    {
-      id: "conv-3",
-      customerName: "Fatou Diarra",
-      avatarBg: "bg-blue-100 text-blue-800",
-      avatarText: "FD",
-      phone: "+226 70 55 44 33",
-      lastMessage: "Ma commande est prête ?",
-      time: "12:08",
-      tag: "TO_RELANCE",
-      tagLabel: "À relancer",
-      tagStyle: "bg-emerald-50 text-emerald-700 border border-emerald-200",
-      tagIcon: CheckCircle2,
-      unread: true,
-    },
-    {
-      id: "conv-4",
-      customerName: "Ibrahim Sanogo",
-      avatarBg: "bg-purple-100 text-purple-800",
-      avatarText: "IB",
-      phone: "+226 70 12 34 56",
-      lastMessage: "Vous livrez à Bobo ?",
-      time: "09:40",
-      tag: "SKEPTICAL",
-      tagLabel: "Sceptique",
-      tagStyle: "bg-purple-50 text-purple-700 border border-purple-200",
-      tagIcon: HelpCircle,
-      unread: false,
-    },
-    {
-      id: "conv-5",
-      customerName: "Sofia Compaoré",
-      avatarBg: "bg-orange-100 text-orange-800",
-      avatarText: "SC",
-      phone: "+226 76 11 22 33",
-      lastMessage: "C'est vraiment efficace ?",
-      time: "Hier",
-      tag: "WAITING",
-      tagLabel: "En attente",
-      tagStyle: "bg-amber-50 text-amber-700 border border-amber-200",
-      tagIcon: Clock,
-      unread: false,
-    },
-    {
-      id: "conv-6",
-      customerName: "Yacine K.",
-      avatarBg: "bg-rose-100 text-rose-800",
-      avatarText: "YK",
-      phone: "+226 71 44 55 66",
-      lastMessage: "J'attends la confirmation du paiement.",
-      time: "Hier",
-      tag: "ORDER_IN_PROGRESS",
-      tagLabel: "Commande en cours",
-      tagStyle: "bg-blue-50 text-blue-700 border border-blue-200",
-      tagIcon: ShoppingCart,
-      unread: false,
-    },
-  ];
+  const [conversations, setConversations] = useState<ConversationItem[]>([]);
+  const [isLoadingConvs, setIsLoadingConvs] = useState<boolean>(true);
+
+  useEffect(() => {
+    fetchConversations();
+  }, []);
+
+  const fetchConversations = async () => {
+    setIsLoadingConvs(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setIsLoadingConvs(false);
+        return;
+      }
+
+      const { data: roleData } = await supabase
+        .from("user_organization_roles")
+        .select("organization_id")
+        .eq("user_id", user.id)
+        .is("deleted_at", null)
+        .limit(1);
+
+      const orgId = roleData && roleData.length > 0 ? roleData[0].organization_id : null;
+      if (!orgId) {
+        setIsLoadingConvs(false);
+        return;
+      }
+
+      const { data: convsData } = await supabase
+        .from("whatsapp_conversations")
+        .select("*")
+        .eq("organization_id", orgId)
+        .order("updated_at", { ascending: false });
+
+      if (convsData && convsData.length > 0) {
+        const formatted: ConversationItem[] = convsData.map((c: any) => {
+          const name = c.customer_name || c.phone_number || "Client WhatsApp";
+          const initials = name.substring(0, 2).toUpperCase();
+
+          let tagType: TagType = "ALL";
+          let tagLabel = "Information";
+          let tagStyle = "bg-stone-100 text-stone-700 border border-stone-200";
+          let tagIcon: any = MessageSquare;
+
+          if (c.tag === "TRES_INTERESSES" || c.tag === "HOT_INTENT") {
+            tagType = "HOT_INTENT";
+            tagLabel = "Très intéressé";
+            tagStyle = "bg-rose-50 text-rose-700 border border-rose-200";
+            tagIcon = Flame;
+          } else if (c.tag === "PRETS_A_COMMANDER" || c.tag === "READY_TO_ORDER") {
+            tagType = "READY_TO_ORDER";
+            tagLabel = "Prêt à commander";
+            tagStyle = "bg-emerald-50 text-emerald-700 border border-emerald-200";
+            tagIcon = CheckCircle2;
+          } else if (c.tag === "A_RELANCER" || c.tag === "TO_RELANCE") {
+            tagType = "TO_RELANCE";
+            tagLabel = "À relancer";
+            tagStyle = "bg-emerald-50 text-emerald-700 border border-emerald-200";
+            tagIcon = CheckCircle2;
+          } else if (c.tag === "SCEPTIQUES" || c.tag === "SKEPTICAL") {
+            tagType = "SKEPTICAL";
+            tagLabel = "Sceptique";
+            tagStyle = "bg-purple-50 text-purple-700 border border-purple-200";
+            tagIcon = HelpCircle;
+          } else if (c.tag === "EN_ATTENTE" || c.tag === "WAITING") {
+            tagType = "WAITING";
+            tagLabel = "En attente";
+            tagStyle = "bg-amber-50 text-amber-700 border border-amber-200";
+            tagIcon = Clock;
+          }
+
+          return {
+            id: c.id,
+            customerName: name,
+            avatarBg: "bg-[#800020]/10 text-[#800020]",
+            avatarText: initials,
+            phone: c.phone_number || "",
+            lastMessage: c.last_message || "Aucun message récent",
+            time: c.updated_at ? new Date(c.updated_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "",
+            tag: tagType,
+            tagLabel,
+            tagStyle,
+            tagIcon,
+            unread: Boolean(c.unread_count && c.unread_count > 0),
+          };
+        });
+        setConversations(formatted);
+      } else {
+        setConversations([]);
+      }
+    } catch (e) {
+      console.error("Error fetching conversations:", e);
+      setConversations([]);
+    } finally {
+      setIsLoadingConvs(false);
+    }
+  };
+
+  const rawConversations = conversations;
 
   // Filtered conversations
   const filteredConvs = useMemo(() => {
@@ -198,42 +208,19 @@ export default function ConversationsCRMPage() {
       if (activeTag === "ALL") return true;
       return c.tag === activeTag;
     });
-  }, [activeTag, searchQuery]);
+  }, [rawConversations, activeTag, searchQuery]);
 
   // Load chat messages when selecting a conversation
   useEffect(() => {
     if (selectedConv) {
-      if (selectedConv.id === "conv-1") {
-        setChatMessages([
-          {
-            id: "m1",
-            sender: "CLIENT",
-            text: "Bonjour, est-ce que le riz 5kg est toujours disponible ?",
-            time: "10:24",
-          },
-          {
-            id: "m2",
-            sender: "COMMERCIAL",
-            text: "Oui, il est disponible à 12 500 XOF. Souhaitez-vous en prendre ?",
-            time: "10:25",
-          },
-          {
-            id: "m3",
-            sender: "CLIENT",
-            text: "D'accord, je prends 2 sacs.",
-            time: "10:26",
-          },
-        ]);
-      } else {
-        setChatMessages([
-          {
-            id: "m-init",
-            sender: "CLIENT",
-            text: selectedConv.lastMessage,
-            time: selectedConv.time,
-          },
-        ]);
-      }
+      setChatMessages([
+        {
+          id: "m-init",
+          sender: "CLIENT",
+          text: selectedConv.lastMessage,
+          time: selectedConv.time || "Maintenant",
+        },
+      ]);
     }
   }, [selectedConv]);
 
@@ -256,14 +243,33 @@ export default function ConversationsCRMPage() {
 
   const handleAssistantAsk = (q: string) => {
     setAssistantQuestion(q);
+    if (conversations.length === 0) {
+      setAssistantAnswer("Aucune conversation active pour le moment dans votre espace d'entreprise.");
+      return;
+    }
     if (q.includes("réponse")) {
-      setAssistantAnswer("3 conversations n'ont pas encore eu de réponse : Awa Koné, Fatou Diarra et Yacine K.");
+      const unreplied = conversations.filter((c) => c.unread);
+      if (unreplied.length > 0) {
+        setAssistantAnswer(`${unreplied.length} conversation(s) en attente de réponse : ${unreplied.map((c) => c.customerName).join(", ")}.`);
+      } else {
+        setAssistantAnswer("Toutes les conversations enregistrées ont déjà reçu une réponse !");
+      }
     } else if (q.includes("relancer")) {
-      setAssistantAnswer("Vous devez relancer Fatou Diarra pour sa commande de riz et Sofia Compaoré.");
+      const relances = conversations.filter((c) => c.tag === "TO_RELANCE");
+      if (relances.length > 0) {
+        setAssistantAnswer(`Client(s) à relancer : ${relances.map((c) => c.customerName).join(", ")}.`);
+      } else {
+        setAssistantAnswer("Aucun client marqué à relancer actuellement.");
+      }
     } else if (q.includes("prêts")) {
-      setAssistantAnswer("Moussa Traoré est prêt à commander 2 cartons d'huile (24 000 XOF).");
+      const prets = conversations.filter((c) => c.tag === "READY_TO_ORDER" || c.tag === "HOT_INTENT");
+      if (prets.length > 0) {
+        setAssistantAnswer(`Client(s) prêts à commander : ${prets.map((c) => c.customerName).join(", ")}.`);
+      } else {
+        setAssistantAnswer("Aucun client identifié comme prêt à commander pour l'instant.");
+      }
     } else {
-      setAssistantAnswer("Voici l'analyse en temps réel de vos conversations. 12 discussions actives aujourd'hui.");
+      setAssistantAnswer(`Analyse des conversations : ${conversations.length} discussion(s) active(s) au total.`);
     }
   };
 

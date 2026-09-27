@@ -32,59 +32,105 @@ interface DeliveryItem {
   failureReason?: string;
 }
 
+import { useEffect } from "react";
+import { createClient } from "@/src/infrastructure/supabase/client";
+
+interface DeliveryItem {
+  id: string;
+  itemNumber: number;
+  orderNumber: string;
+  customerName: string;
+  phone: string;
+  address: string;
+  zone: string;
+  amount: string;
+  timeSlot: string;
+  status: "ASSIGNED" | "IN_TRANSIT" | "DELIVERED" | "FAILED" | "RESCHEDULED";
+  failureReason?: string;
+}
+
 export default function MyDeliveriesPage() {
   const [activeTab, setActiveTab] = useState<"TODAY" | "HISTORY">("TODAY");
+  const [driverName, setDriverName] = useState<string>("Livreur");
+  const [deliveries, setDeliveries] = useState<DeliveryItem[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const [deliveries, setDeliveries] = useState<DeliveryItem[]>([
-    {
-      id: "del-1",
-      itemNumber: 1,
-      orderNumber: "#CMD-2025-0014",
-      customerName: "Awa Koné",
-      phone: "+226 70 12 34 56",
-      address: "Ouagadougou Centre, Secteur 15",
-      zone: "Ouagadougou Centre",
-      amount: "25 000 XOF",
-      timeSlot: "10:00 - 11:00",
-      status: "IN_TRANSIT",
-    },
-    {
-      id: "del-2",
-      itemNumber: 2,
-      orderNumber: "#CMD-2025-0015",
-      customerName: "Moussa Traoré",
-      phone: "+226 71 23 45 67",
-      address: "Zone 1, près du terrain de football",
-      zone: "Zone 1",
-      amount: "45 000 XOF",
-      timeSlot: "12:00 - 13:00",
-      status: "ASSIGNED",
-    },
-    {
-      id: "del-3",
-      itemNumber: 3,
-      orderNumber: "#CMD-2025-0016",
-      customerName: "Fatou Diarra",
-      phone: "+226 76 34 56 78",
-      address: "Pissy, derrière la station Shell",
-      zone: "Pissy",
-      amount: "18 500 XOF",
-      timeSlot: "14:00 - 15:00",
-      status: "ASSIGNED",
-    },
-    {
-      id: "del-4",
-      itemNumber: 4,
-      orderNumber: "#CMD-2025-0010",
-      customerName: "Ibrahim Sanogo",
-      phone: "+226 72 45 67 89",
-      address: "Ouaga 2000, Villa 45",
-      zone: "Ouaga 2000",
-      amount: "36 000 XOF",
-      timeSlot: "Hier 16:00",
-      status: "DELIVERED",
-    },
-  ]);
+  useEffect(() => {
+    fetchDeliveries();
+  }, []);
+
+  const fetchDeliveries = async () => {
+    setIsLoading(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
+      if (user.user_metadata?.full_name) {
+        setDriverName(user.user_metadata.full_name);
+      } else if (user.email) {
+        const prefix = user.email.split("@")[0];
+        setDriverName(prefix.charAt(0).toUpperCase() + prefix.slice(1));
+      }
+
+      const { data: roleData } = await supabase
+        .from("user_organization_roles")
+        .select("organization_id")
+        .eq("user_id", user.id)
+        .is("deleted_at", null)
+        .limit(1);
+
+      const orgId = roleData && roleData.length > 0 ? roleData[0].organization_id : null;
+      if (!orgId) {
+        setIsLoading(false);
+        return;
+      }
+
+      const { data: delData, error } = await supabase
+        .from("deliveries")
+        .select("*, order:orders(*, customer:customers(*))")
+        .eq("organization_id", orgId)
+        .order("created_at", { ascending: false });
+
+      if (error || !delData || delData.length === 0) {
+        setDeliveries([]);
+        setIsLoading(false);
+        return;
+      }
+
+      const formatted: DeliveryItem[] = delData.map((d: any, idx: number) => {
+        const custName = d.order?.customer?.full_name || d.recipient_name || "Client";
+        const custPhone = d.order?.customer?.phone || d.recipient_phone || "Non renseigné";
+        const address = d.delivery_address || d.order?.customer?.address || "Ouagadougou";
+        const amt = d.order?.total_ttc ? `${Number(d.order.total_ttc).toLocaleString("fr-FR")} FCFA` : "0 FCFA";
+        const orderNo = d.order?.order_number || `#CMD-${d.id.substring(0, 6)}`;
+
+        return {
+          id: d.id,
+          itemNumber: idx + 1,
+          orderNumber: orderNo,
+          customerName: custName,
+          phone: custPhone,
+          address,
+          zone: d.zone_name || "Zone Centrale",
+          amount: amt,
+          timeSlot: d.created_at ? new Date(d.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "Aujourd'hui",
+          status: d.status || "ASSIGNED",
+          failureReason: d.failure_reason,
+        };
+      });
+
+      setDeliveries(formatted);
+    } catch (err) {
+      console.error("[My Deliveries] Fetch error:", err);
+      setDeliveries([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const [selectedDelivery, setSelectedDelivery] = useState<DeliveryItem | null>(null);
   const [showFailModal, setShowFailModal] = useState<boolean>(false);
@@ -146,7 +192,7 @@ export default function MyDeliveriesPage() {
             </span>
           </div>
           <p className="text-xs text-stone-500 font-semibold mt-0.5">
-            Aujourd'hui • Issa Nikiema
+            Aujourd'hui • {driverName}
           </p>
         </div>
 

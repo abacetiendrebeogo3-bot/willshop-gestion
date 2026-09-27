@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
+import { createClient } from "@/src/infrastructure/supabase/client";
 import {
   Users,
   Search,
@@ -51,57 +52,82 @@ export default function CustomersCRMPage() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // Mock initial list of customers
-  const [customers, setCustomers] = useState<CustomerRecord[]>([
-    {
-      id: "c1",
-      name: "Awa Koné",
-      phone: "+226 70 12 34 56",
-      address: "Ouagadougou, Secteur 15",
-      channel: "WhatsApp Direct",
-      createdAt: "12 sept. 2024",
-      pastOrdersCount: 5,
-      totalSpent: 125000,
-      activeEngagementsCount: 1,
-      lastConversationTime: "Aujourd'hui 10:24",
-    },
-    {
-      id: "c2",
-      name: "Moussa Traoré",
-      phone: "+226 71 23 45 67",
-      address: "Ouagadougou, Zone 1",
-      channel: "WhatsApp Direct",
-      createdAt: "04 oct. 2024",
-      pastOrdersCount: 3,
-      totalSpent: 85000,
-      activeEngagementsCount: 1,
-      lastConversationTime: "Hier 14:15",
-    },
-    {
-      id: "c3",
-      name: "Fatou Diarra",
-      phone: "+226 76 34 56 78",
-      address: "Ouaga 2000",
-      channel: "Facebook Ads",
-      createdAt: "18 nov. 2024",
-      pastOrdersCount: 2,
-      totalSpent: 42000,
-      activeEngagementsCount: 0,
-      lastConversationTime: "24 sept. 2026",
-    },
-    {
-      id: "c4",
-      name: "Ibrahim Sanogo",
-      phone: "+226 72 45 67 89",
-      address: "Pissy",
-      channel: "Recommandation",
-      createdAt: "02 janv. 2025",
-      pastOrdersCount: 4,
-      totalSpent: 96000,
-      activeEngagementsCount: 0,
-      lastConversationTime: "23 sept. 2026",
-    },
-  ]);
+  const [customers, setCustomers] = useState<CustomerRecord[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [orgId, setOrgId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
+
+  const fetchCustomers = async () => {
+    setIsLoading(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
+      const { data: roleData } = await supabase
+        .from("user_organization_roles")
+        .select("organization_id")
+        .eq("user_id", user.id)
+        .is("deleted_at", null)
+        .limit(1);
+
+      const activeOrgId = roleData && roleData.length > 0 ? roleData[0].organization_id : null;
+      setOrgId(activeOrgId);
+
+      if (!activeOrgId) {
+        setIsLoading(false);
+        return;
+      }
+
+      const { data: custData, error } = await supabase
+        .from("customers")
+        .select("*")
+        .eq("organization_id", activeOrgId)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false });
+
+      if (error || !custData) {
+        setCustomers([]);
+        setIsLoading(false);
+        return;
+      }
+
+      const formatted: CustomerRecord[] = custData.map((c: any) => {
+        const fullName = c.full_name || `${c.first_name || ""} ${c.last_name || ""}`.trim() || c.phone || "Client Sans Nom";
+        const createdDateStr = c.created_at
+          ? new Date(c.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })
+          : "Récemment";
+
+        return {
+          id: c.id,
+          name: fullName,
+          phone: c.phone || c.whatsapp_phone || "Non renseigné",
+          address: c.address || c.city || "Non renseigné",
+          channel: c.source || "WhatsApp Direct",
+          createdAt: createdDateStr,
+          pastOrdersCount: c.past_orders_count || 0,
+          totalSpent: Number(c.total_spent) || 0,
+          activeEngagementsCount: 0,
+          lastConversationTime: createdDateStr,
+        };
+      });
+
+      setCustomers(formatted);
+      if (formatted.length > 0 && !selectedCustomer) {
+        setSelectedCustomer(formatted[0]);
+      }
+    } catch (err) {
+      console.error("[Customers CRM] Error fetching customers:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const filteredCustomers = useMemo(() => {
     return customers.filter((c) => {
@@ -115,37 +141,83 @@ export default function CustomersCRMPage() {
     });
   }, [customers, searchQuery]);
 
-  const handleAddCustomer = (e: React.FormEvent) => {
+  const handleAddCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim() || !formPhone.trim()) return;
 
-    const newCust: CustomerRecord = {
-      id: `c-${Date.now()}`,
-      name: formName.trim(),
-      phone: formPhone.trim(),
-      address: formAddress.trim() || "Ouagadougou",
-      channel: formChannel,
-      createdAt: "À l'instant",
-      pastOrdersCount: 0,
-      totalSpent: 0,
-      activeEngagementsCount: 0,
-      lastConversationTime: "À l'instant",
-    };
+    try {
+      const supabase = createClient();
+      let targetOrgId = orgId;
+      if (!targetOrgId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: roleData } = await supabase
+            .from("user_organization_roles")
+            .select("organization_id")
+            .eq("user_id", user.id)
+            .is("deleted_at", null)
+            .limit(1);
+          if (roleData && roleData.length > 0) targetOrgId = roleData[0].organization_id;
+        }
+      }
 
-    setCustomers((prev) => [newCust, ...prev]);
-    setShowAddModal(false);
-    setFormName("");
-    setFormPhone("");
-    setFormAddress("");
-    showToast(`✓ Client ${newCust.name} ajouté au CRM !`);
+      if (!targetOrgId) {
+        showToast("Erreur: Organisation introuvable.");
+        return;
+      }
+
+      const nameParts = formName.trim().split(" ");
+      const firstName = nameParts[0];
+      const lastName = nameParts.slice(1).join(" ") || "";
+
+      const { data: inserted, error } = await supabase
+        .from("customers")
+        .insert({
+          organization_id: targetOrgId,
+          first_name: firstName,
+          last_name: lastName,
+          full_name: formName.trim(),
+          phone: formPhone.trim(),
+          whatsapp_phone: formPhone.trim(),
+          address: formAddress.trim() || "Ouagadougou",
+          source: formChannel,
+          status: "ACTIVE",
+        })
+        .select("*")
+        .single();
+
+      if (error) {
+        showToast(`Erreur d'ajout: ${error.message}`);
+        return;
+      }
+
+      showToast(`✓ Client ${formName.trim()} ajouté au CRM !`);
+      setShowAddModal(false);
+      setFormName("");
+      setFormPhone("");
+      setFormAddress("");
+      fetchCustomers();
+    } catch (err: any) {
+      showToast(`Erreur: ${err?.message || "Impossible d'ajouter le client."}`);
+    }
   };
 
-  const handleDeleteCustomer = () => {
+  const handleDeleteCustomer = async () => {
     if (!selectedCustomer) return;
-    setCustomers((prev) => prev.filter((c) => c.id !== selectedCustomer.id));
-    setSelectedCustomer(null);
-    setShowDeleteModal(false);
-    showToast("🗑️ Client supprimé du CRM.");
+    try {
+      const supabase = createClient();
+      await supabase
+        .from("customers")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", selectedCustomer.id);
+
+      setSelectedCustomer(null);
+      setShowDeleteModal(false);
+      showToast("🗑️ Client supprimé du CRM.");
+      fetchCustomers();
+    } catch (err: any) {
+      showToast(`Erreur: ${err?.message || "Impossible de supprimer."}`);
+    }
   };
 
   return (

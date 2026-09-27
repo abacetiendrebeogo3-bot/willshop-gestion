@@ -40,65 +40,104 @@ interface CustomerOption {
   hasIntent: boolean;
 }
 
+import { useEffect } from "react";
+import { createClient } from "@/src/infrastructure/supabase/client";
+
 export default function NewOrderPage() {
-  const router = routerNav();
+  const router = useRouter();
 
-  // Mock catalog
-  const catalog: ProductCatalogItem[] = [
-    { id: "p1", name: "Riz Parfumé 5kg", sku: "RIZ-05K", unitPrice: 12500, availableStock: 18 },
-    { id: "p2", name: "Huile de Tournesol 5L", sku: "HUI-05L", unitPrice: 12000, availableStock: 6 },
-    { id: "p3", name: "Sucre Raffiné 1kg", sku: "SUC-01K", unitPrice: 850, availableStock: 45 },
-    { id: "p4", name: "Lait Concentré Sucré 1kg", sku: "LAI-01K", unitPrice: 2500, availableStock: 2 }, // Low stock
-    { id: "p5", name: "Savon de Ménage (Pack de 5)", sku: "SAV-05P", unitPrice: 3500, availableStock: 24 },
-  ];
-
-  // Mock customers
-  const customersList: CustomerOption[] = [
-    {
-      id: "c1",
-      name: "Awa Koné",
-      phone: "+226 70 12 34 56",
-      whatsappConv: "Conv #WA-9921 (Détecté aujourd'hui 10:24)",
-      hasIntent: true,
-    },
-    {
-      id: "c2",
-      name: "Moussa Traoré",
-      phone: "+226 71 23 45 67",
-      whatsappConv: "Conv #WA-8812 (Promesse hier)",
-      hasIntent: true,
-    },
-    {
-      id: "c3",
-      name: "Fatou Diarra",
-      phone: "+226 76 34 56 78",
-      whatsappConv: "Conv #WA-7734",
-      hasIntent: false,
-    },
-    {
-      id: "c4",
-      name: "Ibrahim Sanogo",
-      phone: "+226 72 45 67 89",
-      whatsappConv: "Conv #WA-6645",
-      hasIntent: false,
-    },
-  ];
-
-  // Form State
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("c1");
-  const [rows, setRows] = useState<OrderItemRow[]>([
-    { id: "row-1", productId: "p1", quantity: 2, unitPrice: 12500 },
-  ]);
+  const [catalog, setCatalog] = useState<ProductCatalogItem[]>([]);
+  const [customersList, setCustomersList] = useState<CustomerOption[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
+  const [rows, setRows] = useState<OrderItemRow[]>([]);
   const [deliveryRequired, setDeliveryRequired] = useState<boolean>(true);
   const [deliveryZone, setDeliveryZone] = useState<string>("Ouagadougou Centre");
   const [deliveryFee, setDeliveryFee] = useState<number>(1500);
-  const [deliveryAddress, setDeliveryAddress] = useState<string>("Secteur 15, face Pharmacie de la Paix");
-  const [orderNotes, setOrderNotes] = useState<string>("Client souhaite une livraison avant 14h.");
+  const [deliveryAddress, setDeliveryAddress] = useState<string>("");
+  const [orderNotes, setOrderNotes] = useState<string>("");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
+  const [orgId, setOrgId] = useState<string | null>(null);
 
-  function routerNav() {
-    return useRouter();
-  }
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
+
+  const fetchInitialData = async () => {
+    setIsLoadingData(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setIsLoadingData(false);
+        return;
+      }
+
+      const { data: roleData } = await supabase
+        .from("user_organization_roles")
+        .select("organization_id")
+        .eq("user_id", user.id)
+        .is("deleted_at", null)
+        .limit(1);
+
+      const activeOrgId = roleData && roleData.length > 0 ? roleData[0].organization_id : null;
+      setOrgId(activeOrgId);
+
+      if (!activeOrgId) {
+        setIsLoadingData(false);
+        return;
+      }
+
+      // Fetch Products
+      const { data: prods } = await supabase
+        .from("products")
+        .select("*")
+        .eq("organization_id", activeOrgId)
+        .is("deleted_at", null);
+
+      if (prods && prods.length > 0) {
+        const formattedProds: ProductCatalogItem[] = prods.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          sku: p.sku || `SKU-${p.id.substring(0, 4)}`,
+          unitPrice: Number(p.selling_price) || 0,
+          availableStock: p.minimum_stock || 10,
+        }));
+        setCatalog(formattedProds);
+        setRows([{ id: "row-1", productId: formattedProds[0].id, quantity: 1, unitPrice: formattedProds[0].unitPrice }]);
+      } else {
+        setCatalog([]);
+      }
+
+      // Fetch Customers
+      const { data: custs } = await supabase
+        .from("customers")
+        .select("*")
+        .eq("organization_id", activeOrgId)
+        .is("deleted_at", null);
+
+      if (custs && custs.length > 0) {
+        const formattedCusts: CustomerOption[] = custs.map((c: any) => ({
+          id: c.id,
+          name: c.full_name || `${c.first_name || ""} ${c.last_name || ""}`.trim() || c.phone,
+          phone: c.phone || "Non renseigné",
+          whatsappConv: `Client enregistré via ${c.source || "CRM"}`,
+          hasIntent: true,
+        }));
+        setCustomersList(formattedCusts);
+        setSelectedCustomerId(formattedCusts[0].id);
+        if (formattedCusts[0].phone) {
+          setDeliveryAddress(`Ouagadougou (${formattedCusts[0].phone})`);
+        }
+      } else {
+        setCustomersList([]);
+      }
+    } catch (err) {
+      console.error("[New Order] Error fetching data:", err);
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
 
   const selectedCustomer = useMemo(() => {
     return customersList.find((c) => c.id === selectedCustomerId) || customersList[0];
@@ -163,19 +202,80 @@ export default function NewOrderPage() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleSaveIntent = () => {
-    showToast("📋 Commande enregistrée avec le statut ORDER_INTENT (Intention)");
-    setTimeout(() => {
-      router.push("/orders");
-    }, 1200);
+  const handleSaveOrder = async (status: "ORDER_INTENT" | "ORDER_CONFIRMED") => {
+    try {
+      const supabase = createClient();
+      let targetOrgId = orgId;
+      if (!targetOrgId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: roleData } = await supabase
+            .from("user_organization_roles")
+            .select("organization_id")
+            .eq("user_id", user.id)
+            .is("deleted_at", null)
+            .limit(1);
+          if (roleData && roleData.length > 0) targetOrgId = roleData[0].organization_id;
+        }
+      }
+
+      if (!targetOrgId) {
+        showToast("Erreur: Organisation non trouvée.");
+        return;
+      }
+
+      const orderNumber = `CMD-${Date.now().toString().slice(-6)}`;
+
+      const { data: newOrder, error: orderErr } = await supabase
+        .from("orders")
+        .insert({
+          organization_id: targetOrgId,
+          order_number: orderNumber,
+          customer_id: selectedCustomerId || null,
+          status,
+          subtotal,
+          tax_amount: vat18,
+          delivery_fee: deliveryRequired ? Math.round(deliveryFee) : 0,
+          total_ttc: totalTTC,
+          delivery_address: deliveryAddress || null,
+          notes: orderNotes || null,
+        })
+        .select("*")
+        .single();
+
+      if (orderErr || !newOrder) {
+        showToast(`Erreur d'enregistrement: ${orderErr?.message || "Échec"}`);
+        return;
+      }
+
+      // Insert Order Items
+      if (rows.length > 0) {
+        const itemInserts = rows.map((r) => ({
+          order_id: newOrder.id,
+          product_id: r.productId,
+          quantity: r.quantity,
+          unit_price: r.unitPrice,
+          total_price: Math.round(r.quantity * r.unitPrice),
+        }));
+        await supabase.from("order_items").insert(itemInserts);
+      }
+
+      showToast(
+        status === "ORDER_INTENT"
+          ? "📋 Commande enregistrée avec le statut Intention (ORDER_INTENT)"
+          : "✅ Commande confirmée (ORDER_CONFIRMED) & Enregistrée !"
+      );
+
+      setTimeout(() => {
+        router.push("/orders");
+      }, 1200);
+    } catch (err: any) {
+      showToast(`Erreur: ${err?.message || "Échec"}`);
+    }
   };
 
-  const handleConfirmOrder = () => {
-    showToast("✅ Commande confirmée (ORDER_CONFIRMED) & Livraison générée !");
-    setTimeout(() => {
-      router.push("/orders");
-    }, 1200);
-  };
+  const handleSaveIntent = () => handleSaveOrder("ORDER_INTENT");
+  const handleConfirmOrder = () => handleSaveOrder("ORDER_CONFIRMED");
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-16 animate-fade-in-up">

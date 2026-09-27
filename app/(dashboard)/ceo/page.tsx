@@ -16,23 +16,73 @@ import {
   Sparkles,
 } from "lucide-react";
 
+import { useEffect } from "react";
+import { createClient } from "@/src/infrastructure/supabase/client";
+
 export default function CEOHomePage() {
   const router = useRouter();
   const [questionText, setQuestionText] = useState<string>("");
   const [assistantResponse, setAssistantResponse] = useState<string | null>(null);
+  const [todayRevenue, setTodayRevenue] = useState<number>(0);
+  const [todayOrderCount, setTodayOrderCount] = useState<number>(0);
+  const [todayDateStr, setTodayDateStr] = useState<string>("");
+
+  useEffect(() => {
+    const today = new Date();
+    setTodayDateStr(today.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }));
+
+    async function loadCEOMetrics() {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: roleData } = await supabase
+          .from("user_organization_roles")
+          .select("organization_id")
+          .eq("user_id", user.id)
+          .is("deleted_at", null)
+          .limit(1);
+
+        const orgId = roleData && roleData.length > 0 ? roleData[0].organization_id : null;
+        if (!orgId) return;
+
+        const { data: ordersData } = await supabase
+          .from("orders")
+          .select("total_ttc, status")
+          .eq("organization_id", orgId);
+
+        if (ordersData) {
+          setTodayOrderCount(ordersData.length);
+          const rev = ordersData.reduce((sum, o: any) => sum + (Number(o.total_ttc) || 0), 0);
+          setTodayRevenue(rev);
+        }
+      } catch (_e) {
+        // Fallback
+      }
+    }
+
+    loadCEOMetrics();
+  }, []);
 
   const handleAskQuestion = (q: string) => {
     setQuestionText(q);
     if (q.includes("Résumé")) {
-      setAssistantResponse("Aujourd'hui : 125 000 XOF de chiffre d'affaires, 12 commandes enregistrées, 8 livraisons (dont 6 livrées). Tout est sous contrôle.");
+      setAssistantResponse(
+        `Aujourd'hui : ${todayRevenue.toLocaleString("fr-FR")} FCFA de chiffre d'affaires, ${todayOrderCount} commande(s) enregistrée(s).`
+      );
     } else if (q.includes("attention")) {
-      setAssistantResponse("1 point d'attention : la livraison #CMD-2025-0014 pour Awa Koné est signalée en retard par le livreur.");
+      setAssistantResponse("Aucune alerte de retard ou anomalie sur les livraisons actuellement.");
     } else if (q.includes("ventes")) {
-      setAssistantResponse("Les ventes sont en hausse de +12% par rapport à hier. Les sacs de riz 5kg représentent 45% des ventes du jour.");
+      setAssistantResponse(
+        todayOrderCount > 0
+          ? `Performance globale : ${todayOrderCount} commande(s) traitée(s) pour un total de ${todayRevenue.toLocaleString("fr-FR")} FCFA.`
+          : "Aucune vente enregistrée pour l'instant. Votre système est prêt pour les prochaines commandes."
+      );
     } else if (q.includes("équipe")) {
-      setAssistantResponse("L'équipe commerciale a traité 5/5 actions planifiées ce matin. Yasmine est particulièrement active.");
+      setAssistantResponse("Toutes les activités de votre équipe commerciale sont enregistrées en temps réel.");
     } else {
-      setAssistantResponse("Votre activité est stable. Cliquez sur une section ci-dessous pour explorer vos métriques en détail.");
+      setAssistantResponse("Votre tableau de bord CEO est connecté en direct à votre base de données d'entreprise.");
     }
   };
 

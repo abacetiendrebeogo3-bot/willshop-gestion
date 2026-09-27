@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
+import { createClient } from "@/src/infrastructure/supabase/client";
 import {
   ArrowLeft,
   ShoppingCart,
@@ -21,77 +22,245 @@ import {
   ChevronDown,
 } from "lucide-react";
 
+interface OrderDetailData {
+  id: string;
+  orderNumber: string;
+  createdAt: string;
+  customer: {
+    name: string;
+    phone: string;
+    city: string;
+    address: string;
+    channel: string;
+  };
+  items: Array<{
+    id: string;
+    name: string;
+    sku: string;
+    qty: number;
+    unitPrice: number;
+    subtotal: number;
+  }>;
+  financials: {
+    subtotal: number;
+    vat18: number;
+    deliveryFee: number;
+    totalTTC: number;
+  };
+  timeline: Array<{
+    status: string;
+    label: string;
+    date: string;
+    done: boolean;
+  }>;
+  delivery?: {
+    driverName: string;
+    driverPhone: string;
+    zone: string;
+    status: string;
+    assignedAt: string;
+  };
+  whatsappThread?: Array<{
+    sender: string;
+    text: string;
+    time: string;
+  }>;
+}
+
 export default function OrderDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const orderId = (params?.id as string) || "CMD-2026-0014";
+  const orderId = (params?.id as string) || "";
 
-  const [orderStatus, setOrderStatus] = useState<string>("DELIVERY_CREATED");
+  const [orderStatus, setOrderStatus] = useState<string>("ORDER_CONFIRMED");
   const [showStatusModal, setShowStatusModal] = useState<boolean>(false);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [orderDetails, setOrderDetails] = useState<OrderDetailData | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // Mock Order Details
-  const orderDetails = {
-    orderNumber: "#CMD-2026-0014",
-    createdAt: "24 sept. 2026 à 14:32",
-    customer: {
-      name: "Awa Koné",
-      phone: "+226 70 12 34 56",
-      city: "Ouagadougou",
-      address: "Secteur 15, face Pharmacie de la Paix",
-      channel: "WhatsApp Direct",
-    },
-    items: [
-      { id: "i1", name: "Riz Parfumé 5kg", sku: "RIZ-05K", qty: 2, unitPrice: 12500, subtotal: 25000 },
-      { id: "i2", name: "Huile de Tournesol 5L", sku: "HUI-05L", qty: 1, unitPrice: 12000, subtotal: 12000 },
-    ],
-    financials: {
-      subtotal: 37000,
-      vat18: 6660,
-      deliveryFee: 1500,
-      totalTTC: 45160,
-    },
-    timeline: [
-      { status: "ORDER_INTENT", label: "Intention WhatsApp détectée", date: "24 sept. 14:32", done: true },
-      { status: "ORDER_CONFIRMED", label: "Commande confirmée par le commercial", date: "24 sept. 15:10", done: true },
-      { status: "DELIVERY_CREATED", label: "Livraison créée et attribuée", date: "24 sept. 15:45", done: true },
-      { status: "IN_TRANSIT", label: "Pris en charge par le livreur", date: "25 sept. 09:15", done: false },
-      { status: "DELIVERED", label: "Livraison effectuée & Paiement reçu", date: "En attente", done: false },
-    ],
-    delivery: {
-      driverName: "Issa Nikiema",
-      driverPhone: "+226 78 12 34 56",
-      zone: "Ouagadougou Centre",
-      status: "En cours de livraison (IN_TRANSIT)",
-      assignedAt: "24 sept. 15:45",
-    },
-    whatsappThread: [
-      { sender: "client", text: "Bonjour, le riz parfumé 5kg est disponible ?", time: "14:28" },
-      { sender: "agent", text: "Bonjour Awa ! Oui il est disponible à 12 500 FCFA. Souhaitez-vous passer commande ?", time: "14:30" },
-      { sender: "client", text: "Oui je prends 2 sacs de 5kg et 1 bidon d'huile 5L.", time: "14:32" },
-      { sender: "agent", text: "Super ! Merci, votre commande #CMD-2026-0014 est enregistrée.", time: "14:35" },
-    ],
+  useEffect(() => {
+    if (orderId) {
+      fetchOrderDetail();
+    }
+  }, [orderId]);
+
+  const fetchOrderDetail = async () => {
+    setIsLoading(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
+      const { data: roleData } = await supabase
+        .from("user_organization_roles")
+        .select("organization_id")
+        .eq("user_id", user.id)
+        .is("deleted_at", null)
+        .limit(1);
+
+      const orgId = roleData && roleData.length > 0 ? roleData[0].organization_id : null;
+      if (!orgId) {
+        setIsLoading(false);
+        return;
+      }
+
+      let query = supabase
+        .from("orders")
+        .select("*, customer:customers(*), items:order_items(*, product:products(*))")
+        .eq("organization_id", orgId);
+
+      // Match by ID or by order_number
+      if (orderId.startsWith("CMD-") || orderId.startsWith("#CMD-")) {
+        const cleanNo = orderId.startsWith("#") ? orderId : `#${orderId}`;
+        query = query.or(`order_number.eq.${orderId},order_number.eq.${cleanNo}`);
+      } else {
+        query = query.eq("id", orderId);
+      }
+
+      const { data: orderData, error } = await query.maybeSingle();
+
+      if (error || !orderData) {
+        setOrderDetails(null);
+        setIsLoading(false);
+        return;
+      }
+
+      setOrderStatus(orderData.status || "ORDER_CONFIRMED");
+
+      const cust = orderData.customer || {};
+      const formattedItems = (orderData.items || []).map((i: any) => ({
+        id: i.id,
+        name: i.product?.name || "Produit sans nom",
+        sku: i.product?.sku || "SKU-001",
+        qty: i.quantity || 1,
+        unitPrice: Number(i.unit_price) || 0,
+        subtotal: Number(i.total_price) || (i.quantity * i.unit_price) || 0,
+      }));
+
+      const sub = Number(orderData.subtotal) || formattedItems.reduce((acc: number, item: any) => acc + item.subtotal, 0);
+      const vat = Number(orderData.tax_amount) || Math.round(sub * 0.18);
+      const fee = Number(orderData.delivery_fee) || 0;
+      const total = Number(orderData.total_ttc) || (sub + vat + fee);
+
+      const createdDateStr = orderData.created_at
+        ? new Date(orderData.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+        : "Inconnue";
+
+      const currentSt = orderData.status || "ORDER_CONFIRMED";
+      const isConfirmed = ["ORDER_CONFIRMED", "DELIVERY_CREATED", "IN_TRANSIT", "DELIVERED"].includes(currentSt);
+      const isDelivCreated = ["DELIVERY_CREATED", "IN_TRANSIT", "DELIVERED"].includes(currentSt);
+      const isInTransit = ["IN_TRANSIT", "DELIVERED"].includes(currentSt);
+      const isDelivered = currentSt === "DELIVERED";
+
+      const timeline = [
+        { status: "ORDER_INTENT", label: "Intention WhatsApp / Saisie", date: createdDateStr, done: true },
+        { status: "ORDER_CONFIRMED", label: "Commande confirmée par le commercial", date: isConfirmed ? "Validé" : "En attente", done: isConfirmed },
+        { status: "DELIVERY_CREATED", label: "Livraison créée et attribuée", date: isDelivCreated ? "Validé" : "En attente", done: isDelivCreated },
+        { status: "IN_TRANSIT", label: "Pris en charge par le livreur", date: isInTransit ? "En cours" : "En attente", done: isInTransit },
+        { status: "DELIVERED", label: "Livraison effectuée & Paiement reçu", date: isDelivered ? "Livré" : "En attente", done: isDelivered },
+      ];
+
+      setOrderDetails({
+        id: orderData.id,
+        orderNumber: orderData.order_number || `#CMD-${orderData.id.substring(0, 6)}`,
+        createdAt: createdDateStr,
+        customer: {
+          name: cust.full_name || `${cust.first_name || ""} ${cust.last_name || ""}`.trim() || cust.phone || "Client non spécifié",
+          phone: cust.phone || cust.whatsapp_phone || "Non renseigné",
+          city: cust.city || "Ouagadougou",
+          address: orderData.delivery_address || cust.address || "Non renseignée",
+          channel: cust.source || "Direct",
+        },
+        items: formattedItems,
+        financials: {
+          subtotal: sub,
+          vat18: vat,
+          deliveryFee: fee,
+          totalTTC: total,
+        },
+        timeline,
+      });
+    } catch (err) {
+      console.error("[Order Detail] Fetch error:", err);
+      setOrderDetails(null);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleChangeStatus = (newStatus: string) => {
-    setOrderStatus(newStatus);
-    setShowStatusModal(false);
-    showToast(`✓ Statut mis à jour: ${newStatus}`);
+  const handleChangeStatus = async (newStatus: string) => {
+    if (!orderDetails) return;
+    try {
+      const supabase = createClient();
+      await supabase
+        .from("orders")
+        .update({ status: newStatus })
+        .eq("id", orderDetails.id);
+
+      setOrderStatus(newStatus);
+      setShowStatusModal(false);
+      showToast(`✓ Statut mis à jour: ${newStatus}`);
+      fetchOrderDetail();
+    } catch (err: any) {
+      showToast(`Erreur: ${err?.message || "Impossible de changer le statut"}`);
+    }
   };
 
-  const handleDeleteConfirmed = () => {
-    setShowDeleteModal(false);
-    showToast("🗑️ Commande supprimée avec succès.");
-    setTimeout(() => {
-      router.push("/orders");
-    }, 1200);
+  const handleDeleteConfirmed = async () => {
+    if (!orderDetails) return;
+    try {
+      const supabase = createClient();
+      await supabase
+        .from("orders")
+        .delete()
+        .eq("id", orderDetails.id);
+
+      setShowDeleteModal(false);
+      showToast("🗑️ Commande supprimée avec succès.");
+      setTimeout(() => {
+        router.push("/orders");
+      }, 1200);
+    } catch (err: any) {
+      showToast(`Erreur de suppression: ${err?.message || "Échec"}`);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-12 text-center text-stone-500 font-bold text-xs space-y-2">
+        <ShoppingCart className="w-8 h-8 text-[#800020] animate-bounce mx-auto" />
+        <p>Chargement des détails de la commande...</p>
+      </div>
+    );
+  }
+
+  if (!orderDetails) {
+    return (
+      <div className="p-12 text-center bg-white rounded-3xl border border-[#EBE5DA] space-y-3 max-w-md mx-auto mt-8">
+        <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto" />
+        <h2 className="text-lg font-black text-[#1F1917]">Commande non trouvée</h2>
+        <p className="text-xs text-stone-500 font-medium">
+          Cette commande n'existe pas ou a été supprimée de votre entreprise.
+        </p>
+        <Link
+          href="/orders"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-[#800020] text-white rounded-xl text-xs font-bold"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Retour à la liste des commandes</span>
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-16 animate-fade-in-up">
@@ -261,7 +430,7 @@ export default function OrderDetailPage() {
                 <span>{orderDetails.financials.vat18.toLocaleString("fr-FR")} FCFA</span>
               </div>
               <div className="flex justify-between text-gray-600">
-                <span>Frais de livraison ({orderDetails.delivery.zone}) :</span>
+                <span>Frais de livraison ({orderDetails.delivery?.zone || "Standard"}) :</span>
                 <span>{orderDetails.financials.deliveryFee.toLocaleString("fr-FR")} FCFA</span>
               </div>
               <div className="flex justify-between text-sm font-black text-gray-900 pt-2 border-t border-gray-200">
@@ -281,17 +450,21 @@ export default function OrderDetailPage() {
               <span>Livraison Associee</span>
             </h3>
 
-            <div className="p-3 bg-amber-50/50 border border-amber-200/80 rounded-xl space-y-2 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-gray-900">{orderDetails.delivery.driverName}</span>
-                <span className="text-[10px] font-mono font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
-                  Livreur Assigné
-                </span>
+            {orderDetails.delivery ? (
+              <div className="p-3 bg-amber-50/50 border border-amber-200/80 rounded-xl space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-gray-900">{orderDetails.delivery.driverName}</span>
+                  <span className="text-[10px] font-mono font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
+                    Livreur Assigné
+                  </span>
+                </div>
+                <p className="text-gray-600 font-mono">{orderDetails.delivery.driverPhone}</p>
+                <p className="text-gray-500 text-[11px]">Zone: {orderDetails.delivery.zone}</p>
+                <p className="text-gray-500 text-[10px]">Assigné le: {orderDetails.delivery.assignedAt}</p>
               </div>
-              <p className="text-gray-600 font-mono">{orderDetails.delivery.driverPhone}</p>
-              <p className="text-gray-500 text-[11px]">Zone: {orderDetails.delivery.zone}</p>
-              <p className="text-gray-500 text-[10px]">Assigné le: {orderDetails.delivery.assignedAt}</p>
-            </div>
+            ) : (
+              <p className="text-xs text-stone-500 font-medium">Aucun livreur attribué pour l'instant.</p>
+            )}
           </div>
 
           {/* Linked WhatsApp Conversation Thread (Read-only) */}
@@ -301,21 +474,25 @@ export default function OrderDetailPage() {
               <span>Fil WhatsApp Lié (Lecture)</span>
             </h3>
 
-            <div className="space-y-2 bg-gray-50 p-3 rounded-xl border border-gray-200 max-h-72 overflow-y-auto">
-              {orderDetails.whatsappThread.map((msg, idx) => (
-                <div
-                  key={idx}
-                  className={`flex flex-col text-xs max-w-[85%] ${
-                    msg.sender === "client" ? "self-start bg-white border border-gray-200" : "self-end ml-auto bg-[#800020] text-white"
-                  } p-2.5 rounded-xl shadow-2xs`}
-                >
-                  <p className="leading-snug">{msg.text}</p>
-                  <span className={`text-[9px] font-mono mt-1 ${msg.sender === "client" ? "text-gray-400" : "text-white/70"} text-right`}>
-                    {msg.time}
-                  </span>
-                </div>
-              ))}
-            </div>
+            {orderDetails.whatsappThread && orderDetails.whatsappThread.length > 0 ? (
+              <div className="space-y-2 bg-gray-50 p-3 rounded-xl border border-gray-200 max-h-72 overflow-y-auto">
+                {orderDetails.whatsappThread.map((msg, idx) => (
+                  <div
+                    key={idx}
+                    className={`flex flex-col text-xs max-w-[85%] ${
+                      msg.sender === "client" ? "self-start bg-white border border-gray-200" : "self-end ml-auto bg-[#800020] text-white"
+                    } p-2.5 rounded-xl shadow-2xs`}
+                  >
+                    <p className="leading-snug">{msg.text}</p>
+                    <span className={`text-[9px] font-mono mt-1 ${msg.sender === "client" ? "text-gray-400" : "text-white/70"} text-right`}>
+                      {msg.time}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-stone-500 font-medium">Aucun fil WhatsApp directement lié à cette commande.</p>
+            )}
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -18,25 +18,82 @@ import {
   CheckCircle2,
 } from "lucide-react";
 
+import { createClient } from "@/src/infrastructure/supabase/client";
+
 export default function CommercialHomePage() {
-  const router = RouterHook();
+  const router = useRouter();
+  const [userName, setUserName] = useState<string>("Commercial");
   const [questionText, setQuestionText] = useState<string>("");
   const [assistantResponse, setAssistantResponse] = useState<string | null>(null);
+  const [convCount, setConvCount] = useState<number>(0);
+  const [orderCount, setOrderCount] = useState<number>(0);
+  const [todayDateStr, setTodayDateStr] = useState<string>("");
 
-  function RouterHook() {
-    return useRouter();
-  }
+  useEffect(() => {
+    const today = new Date();
+    setTodayDateStr(today.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }));
+
+    async function loadData() {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          if (user.user_metadata?.full_name) {
+            setUserName(user.user_metadata.full_name);
+          } else if (user.email) {
+            const prefix = user.email.split("@")[0];
+            setUserName(prefix.charAt(0).toUpperCase() + prefix.slice(1));
+          }
+        }
+
+        const { data: roleData } = await supabase
+          .from("user_organization_roles")
+          .select("organization_id")
+          .eq("user_id", user?.id || "")
+          .is("deleted_at", null)
+          .limit(1);
+
+        const orgId = roleData && roleData.length > 0 ? roleData[0].organization_id : null;
+
+        if (orgId) {
+          const { count: cCount } = await supabase
+            .from("whatsapp_conversations")
+            .select("*", { count: "exact", head: true })
+            .eq("organization_id", orgId);
+          setConvCount(cCount || 0);
+
+          const { count: oCount } = await supabase
+            .from("orders")
+            .select("*", { count: "exact", head: true })
+            .eq("organization_id", orgId);
+          setOrderCount(oCount || 0);
+        }
+      } catch (_e) {
+        // Fallback gracefully
+      }
+    }
+
+    loadData();
+  }, []);
 
   const handleAskQuestion = (q: string) => {
     setQuestionText(q);
     if (q.includes("conversations")) {
-      setAssistantResponse("Vous avez 3 conversations WhatsApp en attente de réponse. Awa Koné vous demande si le riz 5kg est disponible.");
+      setAssistantResponse(
+        convCount > 0
+          ? `Vous avez ${convCount} conversation(s) enregistrée(s) dans votre espace d'entreprise.`
+          : "Aucune conversation WhatsApp enregistrée pour le moment."
+      );
     } else if (q.includes("commandes")) {
-      setAssistantResponse("Vous avez 1 commande à finaliser pour Ibrahim Sanogo (#CMD-2025-0014).");
+      setAssistantResponse(
+        orderCount > 0
+          ? `Vous avez ${orderCount} commande(s) active(s) enregistrée(s).`
+          : "Aucune commande enregistrée pour le moment."
+      );
     } else if (q.includes("relances")) {
-      setAssistantResponse("Vous avez 1 relance planifiée pour Aminata Diallo pour le paiement de la commande #CMD-2025-0012.");
+      setAssistantResponse("Aucune relance automatique à effectuer pour l'instant.");
     } else {
-      setAssistantResponse("Vous avez réalisé 5 actions aujourd'hui. Votre journée se passe très bien !");
+      setAssistantResponse(`Bienvenue ${userName} ! Votre tableau de bord est synchronisé en temps réel avec votre base de données.`);
     }
   };
 
@@ -54,7 +111,7 @@ export default function CommercialHomePage() {
       <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 border-b border-[#EBE5DA] pb-4">
         <div>
           <h1 className="text-3xl font-black text-[#1F1917] tracking-tight">
-            Bonjour Yasmine !
+            Bonjour {userName} !
           </h1>
           <p className="text-sm text-stone-500 font-semibold mt-1">
             Comment puis-je vous aider aujourd'hui ?
@@ -63,7 +120,7 @@ export default function CommercialHomePage() {
 
         <div className="flex items-center gap-2 text-xs font-bold text-stone-600 bg-white border border-[#EBE5DA] px-3.5 py-1.5 rounded-full shadow-2xs">
           <Sun className="w-4 h-4 text-amber-500" />
-          <span>Mardi 26 septembre</span>
+          <span className="capitalize">{todayDateStr || "Aujourd'hui"}</span>
         </div>
       </div>
 
@@ -175,9 +232,11 @@ export default function CommercialHomePage() {
               <div className="w-14 h-14 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
                 <MessageSquare className="w-7 h-7" />
               </div>
-              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-rose-600 text-white font-extrabold text-[10px] flex items-center justify-center border-2 border-white shadow-2xs">
-                3
-              </span>
+              {convCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-rose-600 text-white font-extrabold text-[10px] flex items-center justify-center border-2 border-white shadow-2xs">
+                  {convCount}
+                </span>
+              )}
             </div>
 
             <span className="font-extrabold text-[#1F1917] text-xs max-w-[110px] leading-tight">
