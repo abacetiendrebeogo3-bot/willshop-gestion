@@ -70,10 +70,81 @@ export default function TeamCockpitPage() {
   const [taskPriority, setTaskPriority] = useState<"LOW" | "MEDIUM" | "HIGH" | "URGENT">("MEDIUM");
   const [taskDueAt, setTaskDueAt] = useState("");
 
-  // Blocker Modal State
-  const [isBlockerModalOpen, setIsBlockerModalOpen] = useState(false);
-  const [selectedTaskToBlock, setSelectedTaskToBlock] = useState<any>(null);
-  const [blockerReasonInput, setBlockerReasonInput] = useState("");
+  // Edit Employee Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<any>(null);
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editJobTitle, setEditJobTitle] = useState("");
+  const [editRole, setEditRole] = useState<"OWNER" | "MANAGER" | "COMMERCIAL" | "LIVREUR" | "VIEWER">("COMMERCIAL");
+  const [editStatus, setEditStatus] = useState<"ACTIVE" | "INACTIVE">("ACTIVE");
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+  const [editError, setEditError] = useState("");
+
+  const openEditEmployee = (emp: any) => {
+    setEditingEmployee(emp);
+    setEditFirstName(emp.first_name || "");
+    setEditLastName(emp.last_name || "");
+    setEditPhone(emp.phone || "");
+    setEditEmail(emp.email || "");
+    setEditJobTitle(emp.job_title || emp.position || "");
+    setEditRole(emp.role || "COMMERCIAL");
+    setEditStatus(emp.employment_status || "ACTIVE");
+    setEditError("");
+    setIsEditModalOpen(true);
+  };
+
+  async function handleUpdateEmployee(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingEmployee || !orgId) return;
+
+    if (!editFirstName.trim() || !editLastName.trim() || !editPhone.trim()) {
+      setEditError("Le prénom, le nom et le téléphone sont obligatoires.");
+      return;
+    }
+
+    setIsSubmittingEdit(true);
+    setEditError("");
+
+    try {
+      const supabase = createClient();
+      const { error: updateErr } = await supabase
+        .from("team_employees")
+        .update({
+          first_name: editFirstName.trim(),
+          last_name: editLastName.trim(),
+          phone: editPhone.trim(),
+          email: editEmail.trim() || null,
+          job_title: editJobTitle.trim() || null,
+          role: editRole,
+          employment_status: editStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("organization_id", orgId)
+        .eq("id", editingEmployee.id);
+
+      if (updateErr) {
+        throw new Error(updateErr.message);
+      }
+
+      if (editingEmployee.user_id) {
+        await supabase
+          .from("user_organization_roles")
+          .update({ role: editRole })
+          .eq("user_id", editingEmployee.user_id)
+          .eq("organization_id", orgId);
+      }
+
+      setIsEditModalOpen(false);
+      await loadTeamData();
+    } catch (err: any) {
+      setEditError(err?.message || "Erreur lors de la mise à jour des informations.");
+    } finally {
+      setIsSubmittingEdit(false);
+    }
+  }
 
   useEffect(() => {
     loadTeamData();
@@ -535,13 +606,21 @@ export default function TeamCockpitPage() {
                         </div>
                       </div>
 
-                      <Link
-                        href={`/team/${emp.id}`}
-                        className="w-full py-2 bg-white hover:bg-gray-100 text-gray-900 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1 border border-gray-200"
-                      >
-                        <span>Voir la fiche</span>
-                        <ChevronRight className="w-3.5 h-3.5 text-gray-500" />
-                      </Link>
+                      <div className="flex gap-2">
+                        <Link
+                          href={`/team/${emp.id}`}
+                          className="flex-1 py-2 bg-white hover:bg-gray-100 text-gray-900 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1 border border-gray-200"
+                        >
+                          <span>Fiche</span>
+                          <ChevronRight className="w-3.5 h-3.5 text-gray-500" />
+                        </Link>
+                        <button
+                          onClick={() => openEditEmployee(emp)}
+                          className="flex-1 py-2 bg-[#800020]/10 hover:bg-[#800020]/20 text-[#800020] text-xs font-bold rounded-xl transition-all border border-[#800020]/20 flex items-center justify-center gap-1"
+                        >
+                          <span>Éditer</span>
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -1150,6 +1229,142 @@ export default function TeamCockpitPage() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDIT EMPLOYEE */}
+      {isEditModalOpen && editingEmployee && (
+        <div className="fixed inset-0 z-50 bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-lg overflow-hidden shadow-xl animate-scale-in">
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
+                <Users className="w-4 h-4 text-[#800020]" />
+                <span>Modifier les Informations de l'Employé</span>
+              </h3>
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                className="text-gray-400 hover:text-gray-900 p-1 rounded-lg hover:bg-gray-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateEmployee} className="p-5 space-y-4">
+              {editError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 font-medium">
+                  {editError}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Numéro de Téléphone (Mobile / WhatsApp) *
+                </label>
+                <input
+                  type="text"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  placeholder="+226 70 00 00 00"
+                  required
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold font-mono text-gray-900 focus:outline-none focus:border-[#800020]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Prénom *</label>
+                  <input
+                    type="text"
+                    value={editFirstName}
+                    onChange={(e) => setEditFirstName(e.target.value)}
+                    placeholder="Jean"
+                    required
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#800020]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Nom *</label>
+                  <input
+                    type="text"
+                    value={editLastName}
+                    onChange={(e) => setEditLastName(e.target.value)}
+                    placeholder="Kaboré"
+                    required
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#800020]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Rôle & Accès *</label>
+                  <select
+                    value={editRole}
+                    onChange={(e: any) => setEditRole(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-900 focus:outline-none focus:border-[#800020]"
+                  >
+                    <option value="COMMERCIAL">COMMERCIAL (Ventes & CRM)</option>
+                    <option value="MANAGER">MANAGER (Opérations & Stock)</option>
+                    <option value="LIVREUR">LIVREUR (Livraisons)</option>
+                    <option value="OWNER">OWNER / CEO (Accès complet)</option>
+                    <option value="VIEWER">VIEWER (Lecture seule)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Statut d'activité *</label>
+                  <select
+                    value={editStatus}
+                    onChange={(e: any) => setEditStatus(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-900 focus:outline-none focus:border-[#800020]"
+                  >
+                    <option value="ACTIVE">ACTIF (Accès autorisé)</option>
+                    <option value="INACTIVE">INACTIF (Suspendu)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Poste / Fonction</label>
+                  <input
+                    type="text"
+                    value={editJobTitle}
+                    onChange={(e) => setEditJobTitle(e.target.value)}
+                    placeholder="ex: Commercial Senior"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#800020]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    placeholder="email@willshop.bf"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#800020]"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl transition-all"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingEdit}
+                  className="px-4 py-2 bg-[#800020] hover:bg-[#660019] text-white font-bold text-xs rounded-xl transition-all shadow-xs flex items-center gap-2"
+                >
+                  {isSubmittingEdit && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>Enregistrer les modifications</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

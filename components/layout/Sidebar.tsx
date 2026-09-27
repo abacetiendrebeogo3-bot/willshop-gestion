@@ -63,9 +63,23 @@ export function Sidebar() {
         } = await supabase.auth.getUser();
 
         if (user) {
-          const meta = user.user_metadata;
-          if (meta?.first_name || meta?.last_name) {
-            setUserName(`${meta.first_name || ""} ${meta.last_name || ""}`.trim());
+          const cleanPhone = user.user_metadata?.phone || user.phone || "";
+          const cleanDigits = (cleanPhone || user.email?.split("@")[0] || "").replace(/[^\d]/g, "");
+
+          const { data: emp } = await supabase
+            .from("team_employees")
+            .select("first_name, last_name")
+            .or(`user_id.eq.${user.id},phone.eq.${cleanPhone},phone.eq.+${cleanDigits}`)
+            .limit(1)
+            .maybeSingle();
+
+          if (emp && emp.first_name) {
+            setUserName(`${emp.first_name} ${emp.last_name || ""}`.trim());
+          } else {
+            const meta = user.user_metadata;
+            if (meta?.first_name || meta?.last_name) {
+              setUserName(`${meta.first_name || ""} ${meta.last_name || ""}`.trim());
+            }
           }
 
           const { data: roleRows } = await supabase

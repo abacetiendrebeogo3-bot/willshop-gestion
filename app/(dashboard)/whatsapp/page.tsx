@@ -113,6 +113,7 @@ export default function ConversationsPage() {
   const assistantEndRef = useRef<HTMLDivElement>(null);
 
   // Evolution WhatsApp & Member Invite State
+  const [isCeo, setIsCeo] = useState<boolean>(false);
   const [showQrModal, setShowQrModal] = useState(false);
   const [qrCodeBase64, setQrCodeBase64] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<string>("LOADING");
@@ -146,6 +147,10 @@ export default function ConversationsPage() {
 
   const handleInviteMember = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isCeo) {
+      showToast("Seul le CEO ou l'Administrateur peut inviter de nouveaux membres.");
+      return;
+    }
     if (!memberPhone.trim()) {
       showToast("Le numéro WhatsApp est obligatoire.");
       return;
@@ -216,20 +221,26 @@ export default function ConversationsPage() {
       let orgId: string | null = null;
       const { data: roleData } = await supabase
         .from("user_organization_roles")
-        .select("organization_id")
+        .select("organization_id, role")
         .eq("user_id", user.id)
         .is("deleted_at", null)
         .limit(1);
 
       if (roleData && roleData.length > 0) {
         orgId = roleData[0].organization_id;
+        const r = roleData[0].role;
+        setIsCeo(r === "CEO" || r === "OWNER" || r === "ADMIN" || r === "SUPER_ADMIN");
       } else {
         const { data: member } = await supabase
           .from("organization_members")
-          .select("organization_id")
+          .select("organization_id, role")
           .eq("user_id", user.id)
           .single();
-        if (member) orgId = member.organization_id;
+        if (member) {
+          orgId = member.organization_id;
+          const r = member.role;
+          setIsCeo(r === "CEO" || r === "OWNER" || r === "ADMIN" || r === "SUPER_ADMIN");
+        }
       }
 
       if (!orgId) {
@@ -405,13 +416,15 @@ export default function ConversationsPage() {
           <div className="flex items-center gap-2">
             {!showChat && (
               <>
-                <button
-                  onClick={() => setShowAddMemberModal(true)}
-                  className="px-3 py-1.5 bg-[#800020] hover:bg-[#660019] text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-1.5"
-                >
-                  <UserPlus className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Inviter via WhatsApp</span>
-                </button>
+                {isCeo && (
+                  <button
+                    onClick={() => setShowAddMemberModal(true)}
+                    className="px-3 py-1.5 bg-[#800020] hover:bg-[#660019] text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-1.5"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Inviter via WhatsApp</span>
+                  </button>
+                )}
                 {searchOpen ? (
                   <div className="flex items-center gap-2 bg-white border border-[#EBE5DA] rounded-xl px-3 py-1.5 shadow-sm animate-fade-in">
                     <Search className="w-4 h-4 text-stone-400 shrink-0" />
@@ -460,8 +473,8 @@ export default function ConversationsPage() {
                     </h3>
                     <p className="text-[11px] text-stone-500 font-medium">
                       {connectionStatus === 'CONNECTED'
-                        ? 'Session active. Messages et invitations d\'équipe synchronisés.'
-                        : 'Scannez le QR Code ou invitez directement un collaborateur par numéro.'}
+                        ? 'Session active. Messages et conversations synchronisés.'
+                        : 'Scannez le QR Code pour lier votre instance WhatsApp.'}
                     </p>
                   </div>
                 </div>
@@ -475,12 +488,14 @@ export default function ConversationsPage() {
                     <span>⚡ QR Code WhatsApp</span>
                   </button>
 
-                  <button
-                    onClick={() => setShowAddMemberModal(true)}
-                    className="px-3.5 py-1.5 bg-[#800020] hover:bg-[#660019] text-white rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5"
-                  >
-                    <span>📲 Inviter collaborateur</span>
-                  </button>
+                  {isCeo && (
+                    <button
+                      onClick={() => setShowAddMemberModal(true)}
+                      className="px-3.5 py-1.5 bg-[#800020] hover:bg-[#660019] text-white rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5"
+                    >
+                      <span>📲 Inviter collaborateur</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

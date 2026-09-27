@@ -71,9 +71,23 @@ export default function MyDeliveriesPage() {
         return;
       }
 
-      if (user.user_metadata?.full_name) {
+      const cleanPhone = user.user_metadata?.phone || user.phone || "";
+      const cleanDigits = (cleanPhone || user.email?.split("@")[0] || "").replace(/[^\d]/g, "");
+
+      const { data: emp } = await supabase
+        .from("team_employees")
+        .select("first_name, last_name")
+        .or(`user_id.eq.${user.id},phone.eq.${cleanPhone},phone.eq.+${cleanDigits}`)
+        .limit(1)
+        .maybeSingle();
+
+      if (emp && emp.first_name) {
+        setDriverName(`${emp.first_name} ${emp.last_name || ""}`.trim());
+      } else if (user.user_metadata?.first_name) {
+        setDriverName(`${user.user_metadata.first_name} ${user.user_metadata.last_name || ""}`.trim());
+      } else if (user.user_metadata?.full_name) {
         setDriverName(user.user_metadata.full_name);
-      } else if (user.email) {
+      } else if (user.email && !user.email.endsWith("@willshop.bf")) {
         const prefix = user.email.split("@")[0];
         setDriverName(prefix.charAt(0).toUpperCase() + prefix.slice(1));
       }

@@ -38,11 +38,28 @@ export default function CommercialHomePage() {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          if (user.user_metadata?.full_name) {
-            setUserName(user.user_metadata.full_name);
-          } else if (user.email) {
+          // Query team_employees for first_name
+          const cleanPhone = user.user_metadata?.phone || user.phone || "";
+          const cleanDigits = (cleanPhone || user.email?.split("@")[0] || "").replace(/[^\d]/g, "");
+
+          const { data: emp } = await supabase
+            .from("team_employees")
+            .select("first_name, last_name")
+            .or(`user_id.eq.${user.id},phone.eq.${cleanPhone},phone.eq.+${cleanDigits}`)
+            .limit(1)
+            .maybeSingle();
+
+          if (emp && emp.first_name) {
+            setUserName(emp.first_name);
+          } else if (user.user_metadata?.first_name) {
+            setUserName(user.user_metadata.first_name);
+          } else if (user.user_metadata?.full_name) {
+            setUserName(user.user_metadata.full_name.split(" ")[0]);
+          } else if (user.email && !user.email.endsWith("@willshop.bf")) {
             const prefix = user.email.split("@")[0];
             setUserName(prefix.charAt(0).toUpperCase() + prefix.slice(1));
+          } else {
+            setUserName("Yasmine");
           }
         }
 
@@ -111,7 +128,7 @@ export default function CommercialHomePage() {
       <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 border-b border-[#EBE5DA] pb-4">
         <div>
           <h1 className="text-3xl font-black text-[#1F1917] tracking-tight">
-            Bonjour {userName} !
+            Salut {userName} !
           </h1>
           <p className="text-sm text-stone-500 font-semibold mt-1">
             Comment puis-je vous aider aujourd'hui ?
