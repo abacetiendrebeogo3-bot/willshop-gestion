@@ -160,28 +160,23 @@ export default function TeamCockpitPage() {
     setEmployeeError("");
 
     try {
-      const supabase = createClient();
+      const response = await fetch("/api/team/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: empPhone.trim(),
+          firstName: empFirstName.trim(),
+          lastName: empLastName.trim(),
+          email: empEmail.trim() || null,
+          role: empRole,
+          jobTitle: empJobTitle.trim() || null,
+        }),
+      });
 
-      const newEmpPayload = {
-        organization_id: orgId,
-        first_name: empFirstName.trim(),
-        last_name: empLastName.trim(),
-        phone: empPhone.trim(),
-        email: empEmail.trim() || null,
-        role: empRole,
-        employment_status: empStatus,
-        responsibilities: empJobTitle.trim() ? [empJobTitle.trim()] : [],
-        activity_status: "ONLINE",
-      };
+      const resData = await response.json();
 
-      const { data, error } = await supabase
-        .from("team_employees")
-        .insert(newEmpPayload)
-        .select()
-        .single();
-
-      if (error) {
-        throw new Error(error.message);
+      if (!response.ok) {
+        throw new Error(resData?.error || "Erreur lors de la création de l'employé.");
       }
 
       // Reset form & reload
@@ -193,6 +188,10 @@ export default function TeamCockpitPage() {
       setEmpRole("COMMERCIAL");
       setEmpStatus("ACTIVE");
       setIsEmployeeModalOpen(false);
+
+      if (resData?.waShareUrl) {
+        window.open(resData.waShareUrl, "_blank");
+      }
 
       await loadTeamData();
     } catch (err: any) {

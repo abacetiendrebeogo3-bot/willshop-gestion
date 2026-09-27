@@ -182,33 +182,35 @@ export default function SettingsPage() {
   // Invite Member by Phone Number
   const handleInviteMember = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inviteForm.phone.trim() || !orgId) {
+    if (!inviteForm.phone.trim()) {
       showToast("Le numéro de téléphone est obligatoire pour ajouter un membre.");
       return;
     }
 
     try {
-      const supabase = createClient();
-      const phoneClean = inviteForm.phone.trim();
       const nameParts = inviteForm.name.trim().split(" ");
       const firstName = nameParts[0] || "Membre";
       const lastName = nameParts.slice(1).join(" ") || "";
 
-      // Insert into team_employees
-      await supabase
-        .from("team_employees")
-        .insert({
-          organization_id: orgId,
-          phone: phoneClean,
-          first_name: firstName,
-          last_name: lastName,
+      const response = await fetch("/api/team/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: inviteForm.phone.trim(),
+          firstName,
+          lastName,
           email: inviteForm.email.trim() || null,
           role: inviteForm.role,
-          employment_status: "ACTIVE",
-          activity_status: "ONLINE",
-        });
+        }),
+      });
 
-      showToast(`✓ Membre ${phoneClean} ajouté avec succès (${inviteForm.role}) !`);
+      const resData = await response.json();
+
+      if (resData?.waShareUrl) {
+        window.open(resData.waShareUrl, "_blank");
+      }
+
+      showToast(`✓ Invitation WhatsApp envoyée au ${inviteForm.phone.trim()} (${inviteForm.role}) !`);
       setShowInviteModal(false);
       setInviteForm({ phone: "", name: "", email: "", role: "COMMERCIAL" });
       await loadSettingsData();
