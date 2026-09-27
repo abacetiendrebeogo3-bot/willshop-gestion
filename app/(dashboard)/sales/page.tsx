@@ -57,6 +57,8 @@ interface ConversationItem {
   productPrice?: string;
 }
 
+export const dynamic = "force-dynamic";
+
 export default function ConversationsCRMPage() {
   const router = useRouter();
 
@@ -192,6 +194,17 @@ export default function ConversationsCRMPage() {
 
   const rawConversations = conversations;
 
+  const tagCounts = useMemo(() => {
+    return {
+      ALL: rawConversations.length,
+      TO_RELANCE: rawConversations.filter((c) => c.tag === "TO_RELANCE").length,
+      HOT_INTENT: rawConversations.filter((c) => c.tag === "HOT_INTENT").length,
+      WAITING: rawConversations.filter((c) => c.tag === "WAITING").length,
+      SKEPTICAL: rawConversations.filter((c) => c.tag === "SKEPTICAL").length,
+      READY_TO_ORDER: rawConversations.filter((c) => c.tag === "READY_TO_ORDER").length,
+    };
+  }, [rawConversations]);
+
   // Filtered conversations
   const filteredConvs = useMemo(() => {
     return rawConversations.filter((c) => {
@@ -274,7 +287,7 @@ export default function ConversationsCRMPage() {
   };
 
   return (
-    <div className="max-w-xl mx-auto pb-24 animate-fade-in-up relative min-h-[90vh]">
+    <div className="max-w-6xl mx-auto pb-24 animate-fade-in-up relative min-h-[90vh]">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-5 right-5 z-50 bg-[#1F1917] text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2 border border-stone-800 animate-slide-in text-xs font-bold">
@@ -284,7 +297,7 @@ export default function ConversationsCRMPage() {
       )}
 
       {/* ==================================================================== */}
-      {/* VIEW 1: CONVERSATIONS LIST SCREEN (Matching Screen 2 in input_file_0.png) */}
+      {/* VIEW 1: CONVERSATIONS LIST SCREEN */}
       {/* ==================================================================== */}
       {!selectedConv && (
         <div className="space-y-4">
@@ -324,12 +337,12 @@ export default function ConversationsCRMPage() {
             </div>
           )}
 
-          {/* HORIZONTAL SCROLLABLE TAG FILTER PILLS */}
-          <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1 no-scrollbar">
+          {/* FLEXIBLE RESPONSIVE TAG FILTER PILLS */}
+          <div className="flex flex-wrap items-center gap-2 pb-1">
             {/* Tag: Toutes */}
             <button
               onClick={() => setActiveTag("ALL")}
-              className={`px-3.5 py-2 rounded-2xl text-xs font-extrabold flex items-center gap-2 border transition-all shrink-0 shadow-2xs ${
+              className={`px-3.5 py-2 rounded-2xl text-xs font-extrabold flex items-center gap-2 border transition-all shadow-2xs ${
                 activeTag === "ALL"
                   ? "bg-[#800020] text-white border-[#800020]"
                   : "bg-white text-stone-700 border-[#EBE5DA] hover:bg-[#F8F5EE]"
@@ -338,14 +351,14 @@ export default function ConversationsCRMPage() {
               <MessageSquare className="w-3.5 h-3.5" />
               <span>Toutes</span>
               <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${activeTag === "ALL" ? "bg-white/20 text-white" : "bg-stone-100 text-stone-600"}`}>
-                {rawConversations.length}
+                {tagCounts.ALL}
               </span>
             </button>
 
             {/* Tag: À relancer */}
             <button
               onClick={() => setActiveTag("TO_RELANCE")}
-              className={`px-3.5 py-2 rounded-2xl text-xs font-extrabold flex items-center gap-2 border transition-all shrink-0 shadow-2xs ${
+              className={`px-3.5 py-2 rounded-2xl text-xs font-extrabold flex items-center gap-2 border transition-all shadow-2xs ${
                 activeTag === "TO_RELANCE"
                   ? "bg-[#800020] text-white border-[#800020]"
                   : "bg-white text-emerald-800 border-emerald-200 hover:bg-emerald-50"
@@ -354,14 +367,14 @@ export default function ConversationsCRMPage() {
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
               <span>À relancer</span>
               <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-emerald-100 text-emerald-800">
-                3
+                {tagCounts.TO_RELANCE}
               </span>
             </button>
 
             {/* Tag: Très intéressés */}
             <button
               onClick={() => setActiveTag("HOT_INTENT")}
-              className={`px-3.5 py-2 rounded-2xl text-xs font-extrabold flex items-center gap-2 border transition-all shrink-0 shadow-2xs ${
+              className={`px-3.5 py-2 rounded-2xl text-xs font-extrabold flex items-center gap-2 border transition-all shadow-2xs ${
                 activeTag === "HOT_INTENT"
                   ? "bg-[#800020] text-white border-[#800020]"
                   : "bg-white text-rose-800 border-rose-200 hover:bg-rose-50"
@@ -370,14 +383,14 @@ export default function ConversationsCRMPage() {
               <Flame className="w-3.5 h-3.5 text-rose-600" />
               <span>Très intéressés</span>
               <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-rose-100 text-rose-800">
-                2
+                {tagCounts.HOT_INTENT}
               </span>
             </button>
 
             {/* Tag: En attente */}
             <button
               onClick={() => setActiveTag("WAITING")}
-              className={`px-3.5 py-2 rounded-2xl text-xs font-extrabold flex items-center gap-2 border transition-all shrink-0 shadow-2xs ${
+              className={`px-3.5 py-2 rounded-2xl text-xs font-extrabold flex items-center gap-2 border transition-all shadow-2xs ${
                 activeTag === "WAITING"
                   ? "bg-[#800020] text-white border-[#800020]"
                   : "bg-white text-amber-800 border-amber-200 hover:bg-amber-50"
@@ -386,14 +399,14 @@ export default function ConversationsCRMPage() {
               <Clock className="w-3.5 h-3.5 text-amber-600" />
               <span>En attente</span>
               <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-amber-100 text-amber-800">
-                1
+                {tagCounts.WAITING}
               </span>
             </button>
 
             {/* Tag: Sceptiques */}
             <button
               onClick={() => setActiveTag("SKEPTICAL")}
-              className={`px-3.5 py-2 rounded-2xl text-xs font-extrabold flex items-center gap-2 border transition-all shrink-0 shadow-2xs ${
+              className={`px-3.5 py-2 rounded-2xl text-xs font-extrabold flex items-center gap-2 border transition-all shadow-2xs ${
                 activeTag === "SKEPTICAL"
                   ? "bg-[#800020] text-white border-[#800020]"
                   : "bg-white text-purple-800 border-purple-200 hover:bg-purple-50"
@@ -402,14 +415,14 @@ export default function ConversationsCRMPage() {
               <HelpCircle className="w-3.5 h-3.5 text-purple-600" />
               <span>Sceptiques</span>
               <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-purple-100 text-purple-800">
-                1
+                {tagCounts.SKEPTICAL}
               </span>
             </button>
 
             {/* Tag: Prêts à commander */}
             <button
               onClick={() => setActiveTag("READY_TO_ORDER")}
-              className={`px-3.5 py-2 rounded-2xl text-xs font-extrabold flex items-center gap-2 border transition-all shrink-0 shadow-2xs ${
+              className={`px-3.5 py-2 rounded-2xl text-xs font-extrabold flex items-center gap-2 border transition-all shadow-2xs ${
                 activeTag === "READY_TO_ORDER"
                   ? "bg-[#800020] text-white border-[#800020]"
                   : "bg-white text-emerald-800 border-emerald-200 hover:bg-emerald-50"
@@ -418,7 +431,7 @@ export default function ConversationsCRMPage() {
               <ShoppingCart className="w-3.5 h-3.5 text-emerald-600" />
               <span>Prêts à commander</span>
               <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-emerald-100 text-emerald-800">
-                2
+                {tagCounts.READY_TO_ORDER}
               </span>
             </button>
           </div>
