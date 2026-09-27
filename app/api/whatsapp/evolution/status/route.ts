@@ -120,8 +120,8 @@ export async function GET(request: NextRequest) {
       }
 
       // Verify webhook setting
-      const origin = request.nextUrl.origin || process.env.NEXT_PUBLIC_APP_URL || 'https://willshop-os.vercel.app';
-      const webhookUrl = `${origin}/api/webhooks/whatsapp/evolution`;
+      const appUrl = (process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin || 'https://willshop-gestion.vercel.app').replace(/\/+$/, '');
+      const webhookUrl = `${appUrl}/api/webhooks/whatsapp/evolution`;
       await evolutionAdapter.setWebhook(instanceName, webhookUrl).catch(() => null);
 
       return NextResponse.json({

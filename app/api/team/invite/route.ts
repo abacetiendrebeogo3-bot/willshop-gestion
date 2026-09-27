@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 6. Build Invitation Text & App Login Link
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://willshop-gestion.vercel.app";
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin || "https://willshop-gestion.vercel.app").replace(/\/+$/, '');
     const inviteUrl = `${appUrl}/login?phone=${encodeURIComponent(phoneClean)}`;
 
     const inviteText = `📲 *Invitation WILLShop OS*

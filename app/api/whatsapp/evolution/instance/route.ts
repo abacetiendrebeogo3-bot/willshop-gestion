@@ -81,8 +81,8 @@ export async function POST(request: NextRequest) {
     const instanceName = `ws_org_${organizationId.replace(/-/g, '').slice(0, 12)}`;
 
     // Determine Webhook URL for Evolution to post events back to WILLShop OS
-    const origin = request.nextUrl.origin || process.env.NEXT_PUBLIC_APP_URL || 'https://willshop-os.vercel.app';
-    const webhookUrl = `${origin}/api/webhooks/whatsapp/evolution`;
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin || 'https://willshop-gestion.vercel.app').replace(/\/+$/, '');
+    const webhookUrl = `${appUrl}/api/webhooks/whatsapp/evolution`;
 
     // 5. Create or verify instance on Evolution
     const createResult = await evolutionAdapter.createInstance(instanceName, webhookUrl);
