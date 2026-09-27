@@ -29,24 +29,31 @@ import { useSidebar } from "@/src/context/SidebarContext";
 
 type ActiveSpace = "CEO" | "COMMERCIAL" | "LIVREUR";
 
+function getSpaceFromPathname(pathname: string): ActiveSpace {
+  if (pathname.startsWith("/delivery")) {
+    return "LIVREUR";
+  }
+  if (
+    pathname.startsWith("/sales/my-day") ||
+    pathname === "/sales" ||
+    pathname.startsWith("/sales/my-activity") ||
+    pathname.startsWith("/sales/followups")
+  ) {
+    return "COMMERCIAL";
+  }
+  // All management, CEO, team, orders, finance, settings, products, marketing routes default to CEO
+  return "CEO";
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { isOpen, closeSidebar } = useSidebar();
-  const [activeSpace, setActiveSpace] = useState<ActiveSpace>("CEO");
+  const [activeSpace, setActiveSpace] = useState<ActiveSpace>(() => getSpaceFromPathname(pathname));
+  const [userRole, setUserRole] = useState<ActiveSpace | null>(null);
   const [userName, setUserName] = useState<string>("Wilfried Tiendrebeogo");
 
-  // Determine current active space from pathname
-  useEffect(() => {
-    if (pathname.startsWith("/delivery")) {
-      setActiveSpace("LIVREUR");
-    } else if (pathname.startsWith("/sales/my-day") || pathname === "/sales/customers") {
-      setActiveSpace("COMMERCIAL");
-    } else if (pathname.startsWith("/ceo") || pathname === "/orders" || pathname === "/finance" || pathname === "/settings") {
-      setActiveSpace("CEO");
-    }
-  }, [pathname]);
-
+  // Fetch real user role from Supabase (Source of Truth)
   useEffect(() => {
     async function fetchUserRole() {
       try {
@@ -69,21 +76,30 @@ export function Sidebar() {
 
           if (roleRows && roleRows.length > 0) {
             const r = roleRows[0].role;
-            if (r === "LIVREUR" || r === "DRIVER") setActiveSpace("LIVREUR");
-            else if (r === "COMMERCIAL" || r === "SALES") setActiveSpace("COMMERCIAL");
-            else setActiveSpace("CEO");
+            if (r === "LIVREUR" || r === "DRIVER") setUserRole("LIVREUR");
+            else if (r === "COMMERCIAL" || r === "SALES") setUserRole("COMMERCIAL");
+            else setUserRole("CEO");
           }
         }
       } catch (_err) {
-        // Fallback default
+        // Fallback
       }
     }
     fetchUserRole();
   }, []);
 
+  // Synchronize active space: User role has priority, fallback to route-based mapping
+  useEffect(() => {
+    if (userRole) {
+      setActiveSpace(userRole);
+    } else {
+      setActiveSpace(getSpaceFromPathname(pathname));
+    }
+  }, [pathname, userRole]);
+
   const CEO_ITEMS = [
     { name: "Accueil", href: "/ceo", icon: LayoutDashboard },
-    { name: "Ventes", href: "/orders", icon: TrendingUp },
+    { name: "Ventes", href: "/sales", icon: TrendingUp },
     { name: "Commandes", href: "/orders", icon: ShoppingCart },
     { name: "Livraisons", href: "/delivery", icon: Truck },
     { name: "Équipe", href: "/team", icon: Users },
@@ -104,7 +120,6 @@ export function Sidebar() {
   const LIVREUR_ITEMS = [
     { name: "Mes Livraisons", href: "/delivery/my-deliveries", icon: Truck },
     { name: "Carte & Itinéraire", href: "/delivery", icon: MapPin },
-    { name: "Historique", href: "/delivery", icon: Clock },
   ];
 
   const currentNavItems =
@@ -185,7 +200,7 @@ export function Sidebar() {
 
               return (
                 <Link
-                  key={item.href}
+                  key={`${activeSpace}-${item.name}`}
                   href={item.href}
                   onClick={closeSidebar}
                   className={`group flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-extrabold transition-all duration-150 ${

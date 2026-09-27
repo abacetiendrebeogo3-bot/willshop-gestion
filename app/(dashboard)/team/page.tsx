@@ -305,44 +305,47 @@ export default function TeamCockpitPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="flex flex-col items-center gap-3 text-slate-400">
-          <Loader2 className="w-8 h-8 animate-spin text-[#7B61FF]" />
-          <p className="text-sm font-mono">Chargement du Cockpit Équipe...</p>
+        <div className="flex flex-col items-center gap-3 text-stone-500">
+          <Loader2 className="w-8 h-8 animate-spin text-[#800020]" />
+          <p className="text-xs font-extrabold text-stone-700">Chargement de la Gestion d'Équipe WILLShop OS...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto animate-fade-in-up pb-12">
-      {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-[#181824] pb-6">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-[#7B61FF]/10 rounded-2xl border border-[#7B61FF]/20 text-[#7B61FF]">
-              <Users className="w-8 h-8" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-3">
-                Team & Productivity Cockpit
+    <div className="space-y-6 max-w-7xl mx-auto animate-fade-in-up pb-16">
+      {/* HEADER SECTION - WILLSHOP LIGHT STYLE */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-gray-200">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-[#800020]/10 rounded-2xl border border-[#800020]/20 text-[#800020]">
+            <Users className="w-7 h-7" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">
+                Cockpit Équipe & Productivité
               </h1>
-              <p className="text-sm text-gray-400 mt-1">
-                Le moteur d&apos;exécution de WillShop OS — Connecte employés, tâches, charge, performance & escalades.
-              </p>
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#800020]/10 text-[#800020] border border-[#800020]/20">
+                Direction & RH
+              </span>
             </div>
+            <p className="text-xs text-gray-500 font-medium mt-0.5">
+              Gestion centralisée de vos employés, charge de travail et fiches de performance
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => {
               setEmployeeError("");
               setIsEmployeeModalOpen(true);
             }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-[#181824] hover:bg-[#202030] text-white font-medium rounded-xl border border-slate-700 transition-all font-mono text-xs"
+            className="flex items-center gap-2 px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-900 font-bold rounded-xl border border-gray-200 transition-all text-xs"
           >
-            <UserPlus className="w-4 h-4 text-[#7B61FF]" />
-            + Ajouter un employé
+            <UserPlus className="w-4 h-4 text-[#800020]" />
+            <span>+ Ajouter un employé</span>
           </button>
 
           <button
@@ -350,168 +353,132 @@ export default function TeamCockpitPage() {
               setTaskError("");
               setIsTaskModalOpen(true);
             }}
-            className="flex items-center gap-2 px-5 py-2.5 bg-[#7B61FF] hover:bg-[#684DFE] text-white font-medium rounded-xl transition-all shadow-lg shadow-[#7B61FF]/20 font-mono text-xs"
+            className="flex items-center gap-2 px-4 py-2 bg-[#800020] hover:bg-[#660019] text-white font-bold rounded-xl transition-all shadow-xs text-xs"
           >
-            <Plus className="w-4 h-4" />
-            Nouvelle Tâche
+            <Plus className="w-4 h-4 text-[#D4A843]" />
+            <span>Nouvelle Tâche</span>
           </button>
         </div>
       </div>
 
-      {/* KPI METRICS OVERVIEW */}
+      {/* KPI METRICS OVERVIEW - CLEAN LIGHT CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-[#12121A] border border-[#1E1E2C] rounded-2xl p-5 hover:border-[#7B61FF]/40 transition-all">
-          <div className="flex items-center justify-between text-gray-400 mb-2">
-            <span className="text-xs uppercase tracking-wider font-mono">Membres Actifs</span>
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-2xs hover:border-[#800020]/40 transition-all">
+          <div className="flex items-center justify-between text-gray-500 mb-2">
+            <span className="text-[11px] uppercase tracking-wider font-extrabold text-gray-400">Membres Actifs</span>
             <DataSourceBadge type={employees.length > 0 ? "DATABASE" : "EMPTY_STATE"} />
           </div>
-          <div className="text-3xl font-bold text-white font-mono">{employees.length}</div>
-          <div className="text-xs text-gray-400 mt-1 flex items-center gap-1 font-mono">
-            <UserCheck className="w-3.5 h-3.5" /> Employés Supabase
+          <div className="text-3xl font-extrabold text-gray-900 font-mono">{employees.length}</div>
+          <div className="text-xs text-gray-500 mt-1 flex items-center gap-1 font-medium">
+            <UserCheck className="w-3.5 h-3.5 text-[#800020]" /> Employés en base
           </div>
         </div>
 
-        <div className="bg-[#12121A] border border-[#1E1E2C] rounded-2xl p-5 hover:border-[#7B61FF]/40 transition-all">
-          <div className="flex items-center justify-between text-gray-400 mb-2">
-            <span className="text-xs uppercase tracking-wider font-mono">Tâches Ouvertes</span>
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-2xs hover:border-[#800020]/40 transition-all">
+          <div className="flex items-center justify-between text-gray-500 mb-2">
+            <span className="text-[11px] uppercase tracking-wider font-extrabold text-gray-400">Tâches Ouvertes</span>
             <DataSourceBadge type={openTasks > 0 ? "DATABASE" : "EMPTY_STATE"} />
           </div>
-          <div className="text-3xl font-bold text-white font-mono">{openTasks}</div>
-          <div className="text-xs text-slate-400 mt-1 font-mono">En cours / À faire</div>
+          <div className="text-3xl font-extrabold text-gray-900 font-mono">{openTasks}</div>
+          <div className="text-xs text-gray-500 mt-1 font-medium">En cours / À faire</div>
         </div>
 
-        <div className="bg-[#12121A] border border-[#1E1E2C] rounded-2xl p-5 hover:border-[#7B61FF]/40 transition-all">
-          <div className="flex items-center justify-between text-gray-400 mb-2">
-            <span className="text-xs uppercase tracking-wider font-mono">En Retard</span>
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-2xs hover:border-[#800020]/40 transition-all">
+          <div className="flex items-center justify-between text-gray-500 mb-2">
+            <span className="text-[11px] uppercase tracking-wider font-extrabold text-gray-400">En Retard</span>
             <DataSourceBadge type={overdueTasks > 0 ? "DATABASE" : "EMPTY_STATE"} />
           </div>
-          <div className="text-3xl font-bold text-amber-400 font-mono">{overdueTasks}</div>
-          <div className="text-xs text-slate-400 mt-1 font-mono flex items-center gap-1">
-            <AlertCircle className="w-3.5 h-3.5 text-amber-400" /> Tâches hors délai
+          <div className="text-3xl font-extrabold text-amber-600 font-mono">{overdueTasks}</div>
+          <div className="text-xs text-gray-500 mt-1 font-medium flex items-center gap-1">
+            <AlertCircle className="w-3.5 h-3.5 text-amber-600" /> Hors délai
           </div>
         </div>
 
-        <div className="bg-[#12121A] border border-[#1E1E2C] rounded-2xl p-5 hover:border-[#7B61FF]/40 transition-all">
-          <div className="flex items-center justify-between text-gray-400 mb-2">
-            <span className="text-xs uppercase tracking-wider font-mono">Tâches Bloquées</span>
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-2xs hover:border-[#800020]/40 transition-all">
+          <div className="flex items-center justify-between text-gray-500 mb-2">
+            <span className="text-[11px] uppercase tracking-wider font-extrabold text-gray-400">Tâches Bloquées</span>
             <DataSourceBadge type={blockedTasks > 0 ? "DATABASE" : "EMPTY_STATE"} />
           </div>
-          <div className="text-3xl font-bold text-rose-400 font-mono">{blockedTasks}</div>
-          <div className="text-xs text-slate-400 mt-1 font-mono">Blocages actifs</div>
+          <div className="text-3xl font-extrabold text-rose-600 font-mono">{blockedTasks}</div>
+          <div className="text-xs text-gray-500 mt-1 font-medium">Blocages actifs</div>
         </div>
 
-        <div className="bg-[#12121A] border border-[#1E1E2C] rounded-2xl p-5 hover:border-[#7B61FF]/40 transition-all">
-          <div className="flex items-center justify-between text-gray-400 mb-2">
-            <span className="text-xs uppercase tracking-wider font-mono">Escalades Actives</span>
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-2xs hover:border-[#800020]/40 transition-all">
+          <div className="flex items-center justify-between text-gray-500 mb-2">
+            <span className="text-[11px] uppercase tracking-wider font-extrabold text-gray-400">Escalades</span>
             <DataSourceBadge type={escalations.length > 0 ? "DATABASE" : "EMPTY_STATE"} />
           </div>
-          <div className="text-3xl font-bold text-purple-400 font-mono">{escalations.length}</div>
-          <div className="text-xs text-slate-400 mt-1 font-mono flex items-center gap-1">
-            <Sparkles className="w-3.5 h-3.5 text-purple-400" /> Suivi automatique
+          <div className="text-3xl font-extrabold text-[#800020] font-mono">{escalations.length}</div>
+          <div className="text-xs text-gray-500 mt-1 font-medium flex items-center gap-1">
+            <Sparkles className="w-3.5 h-3.5 text-[#D4A843]" /> Suivi automatique
           </div>
         </div>
       </div>
 
       {/* TABS NAVIGATION */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-[#181824] pb-2">
-        <button
-          onClick={() => setActiveTab("overview")}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
-            activeTab === "overview"
-              ? "bg-[#7B61FF]/20 text-[#7B61FF] border border-[#7B61FF]/30"
-              : "text-gray-400 hover:text-white hover:bg-[#12121A]"
-          }`}
-        >
-          <Layers className="w-4 h-4" />
-          Vue d&apos;Ensemble Équipe
-        </button>
-
-        <button
-          onClick={() => setActiveTab("workload")}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
-            activeTab === "workload"
-              ? "bg-[#7B61FF]/20 text-[#7B61FF] border border-[#7B61FF]/30"
-              : "text-gray-400 hover:text-white hover:bg-[#12121A]"
-          }`}
-        >
-          <Briefcase className="w-4 h-4" />
-          Charge de Travail (Workload)
-        </button>
-
-        <button
-          onClick={() => setActiveTab("kanban")}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
-            activeTab === "kanban"
-              ? "bg-[#7B61FF]/20 text-[#7B61FF] border border-[#7B61FF]/30"
-              : "text-gray-400 hover:text-white hover:bg-[#12121A]"
-          }`}
-        >
-          <CheckSquare className="w-4 h-4" />
-          Tableau Kanban
-        </button>
-
-        <button
-          onClick={() => setActiveTab("scorecards")}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
-            activeTab === "scorecards"
-              ? "bg-[#7B61FF]/20 text-[#7B61FF] border border-[#7B61FF]/30"
-              : "text-gray-400 hover:text-white hover:bg-[#12121A]"
-          }`}
-        >
-          <TrendingUp className="w-4 h-4" />
-          Performance & Fiches Scorecards
-        </button>
-
-        <button
-          onClick={() => setActiveTab("escalations")}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
-            activeTab === "escalations"
-              ? "bg-[#7B61FF]/20 text-[#7B61FF] border border-[#7B61FF]/30"
-              : "text-gray-400 hover:text-white hover:bg-[#12121A]"
-          }`}
-        >
-          <AlertTriangle className="w-4 h-4" />
-          Escalades & Goulets d&apos;Étranglement
-        </button>
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-gray-200 pb-3">
+        {[
+          { id: "overview", label: "Vue d'Ensemble Équipe", icon: Layers },
+          { id: "workload", label: "Charge de Travail (Workload)", icon: Briefcase },
+          { id: "kanban", label: "Tableau Kanban", icon: CheckSquare },
+          { id: "scorecards", label: "Performance & Scorecards", icon: TrendingUp },
+          { id: "escalations", label: "Escalades & Blocages", icon: AlertTriangle },
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                isActive
+                  ? "bg-[#800020] text-white shadow-xs"
+                  : "bg-gray-100/80 text-gray-700 hover:bg-gray-200 hover:text-gray-900"
+              }`}
+            >
+              <Icon className={`w-4 h-4 ${isActive ? "text-[#D4A843]" : "text-gray-500"}`} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* TAB CONTENT: OVERVIEW */}
       {activeTab === "overview" && (
         <div className="space-y-6">
-          <div className="bg-[#12121A] border border-[#1E1E2C] rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <Users className="w-5 h-5 text-[#7B61FF]" />
-                Membres de l&apos;Équipe WillShop ({employees.length})
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+              <h2 className="text-base font-extrabold text-gray-900 flex items-center gap-2">
+                <Users className="w-4 h-4 text-[#800020]" />
+                <span>Membres de l'Équipe WillShop ({employees.length})</span>
               </h2>
               <button
                 onClick={() => setIsEmployeeModalOpen(true)}
-                className="text-xs font-mono text-[#7B61FF] hover:underline flex items-center gap-1"
+                className="text-xs font-bold text-[#800020] hover:underline flex items-center gap-1"
               >
                 + Enregistrer un membre
               </button>
             </div>
 
             {employees.length === 0 ? (
-              <div className="p-12 text-center bg-[#0A0A10] rounded-2xl border border-dashed border-[#1E1E2C] space-y-4">
-                <UserCheck className="w-12 h-12 text-slate-600 mx-auto" />
+              <div className="p-12 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200 space-y-4">
+                <UserCheck className="w-12 h-12 text-gray-400 mx-auto" />
                 <div className="space-y-1">
-                  <h3 className="text-base font-bold text-white">Aucun employé enregistré</h3>
-                  <p className="text-xs text-slate-400 max-w-md mx-auto">
-                    Vous n&apos;avez pas encore ajouté de membre d&apos;équipe dans votre organisation.
-                    Commencez par ajouter votre premier commercial ou manager.
+                  <h3 className="text-sm font-extrabold text-gray-900">Aucun employé enregistré en base</h3>
+                  <p className="text-xs text-gray-500 max-w-md mx-auto">
+                    Vous n'avez pas encore d'employés dans votre organisation. Cliquez ci-dessous pour ajouter un commercial, livreur ou manager.
                   </p>
                 </div>
                 <button
                   onClick={() => setIsEmployeeModalOpen(true)}
-                  className="px-4 py-2 bg-[#7B61FF] hover:bg-[#684DFE] text-white font-medium text-xs font-mono rounded-xl transition-all inline-flex items-center gap-2"
+                  className="px-4 py-2 bg-[#800020] hover:bg-[#660019] text-white font-bold text-xs rounded-xl transition-all inline-flex items-center gap-2 shadow-xs"
                 >
-                  <UserPlus className="w-4 h-4" />
-                  + Ajouter un employé
+                  <UserPlus className="w-4 h-4 text-[#D4A843]" />
+                  <span>+ Ajouter un employé</span>
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {employees.map((emp) => {
                   const empTasks = tasks.filter((t) => t.assigned_to === emp.id);
                   const empOpenTasks = empTasks.filter(
@@ -524,44 +491,44 @@ export default function TeamCockpitPage() {
                   return (
                     <div
                       key={emp.id}
-                      className="bg-[#0A0A10] border border-[#1E1E2C] rounded-xl p-5 hover:border-[#7B61FF]/40 transition-all space-y-4 flex flex-col justify-between"
+                      className="bg-gray-50/60 border border-gray-200 rounded-2xl p-5 hover:border-[#800020]/30 transition-all space-y-4 flex flex-col justify-between"
                     >
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-[#7B61FF]/10 border border-[#7B61FF]/20 flex items-center justify-center text-[#7B61FF] font-bold font-mono">
+                            <div className="w-10 h-10 rounded-xl bg-[#800020] text-[#D4A843] flex items-center justify-center font-black text-sm shadow-2xs">
                               {emp.first_name?.[0]}
                               {emp.last_name?.[0]}
                             </div>
                             <div>
-                              <h3 className="font-semibold text-white text-base">
+                              <h3 className="font-extrabold text-gray-900 text-sm">
                                 {emp.first_name} {emp.last_name}
                               </h3>
-                              <span className="text-xs text-gray-400 font-mono">{emp.role}</span>
+                              <span className="text-[11px] text-gray-500 font-semibold">{emp.role}</span>
                             </div>
                           </div>
                           <span
-                            className={`px-2.5 py-0.5 text-[10px] font-mono font-semibold rounded-full border ${
+                            className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full border ${
                               emp.employment_status === "ACTIVE"
-                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-                                : "bg-rose-500/10 text-rose-400 border-rose-500/30"
+                                ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                                : "bg-rose-50 text-rose-800 border-rose-200"
                             }`}
                           >
                             {emp.employment_status}
                           </span>
                         </div>
 
-                        <div className="text-xs text-gray-300 space-y-1 font-mono pt-2 border-t border-[#181824]">
+                        <div className="text-xs text-gray-700 space-y-1.5 pt-3 border-t border-gray-200/80 font-medium">
                           <p className="flex justify-between">
-                            <span className="text-slate-400">Tâches ouvertes:</span>
-                            <span className="font-bold text-white">{empOpenTasks}</span>
+                            <span className="text-gray-500">Tâches ouvertes:</span>
+                            <span className="font-bold text-gray-900">{empOpenTasks}</span>
                           </p>
                           <p className="flex justify-between">
-                            <span className="text-slate-400">Haute priorité:</span>
-                            <span className="font-bold text-amber-400">{empUrgentTasks}</span>
+                            <span className="text-gray-500">Haute priorité:</span>
+                            <span className="font-bold text-amber-700">{empUrgentTasks}</span>
                           </p>
                           {emp.phone && (
-                            <p className="flex justify-between text-slate-400">
+                            <p className="flex justify-between text-gray-500 font-mono">
                               <span>Tél:</span>
                               <span>{emp.phone}</span>
                             </p>
@@ -571,9 +538,10 @@ export default function TeamCockpitPage() {
 
                       <Link
                         href={`/team/${emp.id}`}
-                        className="w-full py-2 bg-[#181824] hover:bg-[#202030] text-slate-300 hover:text-white text-xs font-mono rounded-lg transition-all flex items-center justify-center gap-1 border border-slate-800"
+                        className="w-full py-2 bg-white hover:bg-gray-100 text-gray-900 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1 border border-gray-200"
                       >
-                        Voir la fiche <ChevronRight className="w-3.5 h-3.5" />
+                        <span>Voir la fiche</span>
+                        <ChevronRight className="w-3.5 h-3.5 text-gray-500" />
                       </Link>
                     </div>
                   );
@@ -587,18 +555,18 @@ export default function TeamCockpitPage() {
       {/* TAB CONTENT: WORKLOAD */}
       {activeTab === "workload" && (
         <div className="space-y-6">
-          <div className="bg-[#12121A] border border-[#1E1E2C] rounded-2xl p-6 space-y-4">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <Briefcase className="w-5 h-5 text-[#7B61FF]" />
-              Charge de Travail par Employé (Workload)
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-2xs space-y-4">
+            <h2 className="text-base font-extrabold text-gray-900 flex items-center gap-2">
+              <Briefcase className="w-4 h-4 text-[#800020]" />
+              <span>Charge de Travail par Employé (Workload)</span>
             </h2>
 
             {employees.length === 0 ? (
-              <div className="p-8 text-center bg-[#0A0A10] rounded-xl border border-dashed border-[#1E1E2C] text-slate-400 font-mono text-sm">
+              <div className="p-8 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200 text-gray-500 text-xs font-medium">
                 Aucune charge de travail disponible. Enregistrez des employés et assignez des tâches.
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {employees.map((emp) => {
                   const empTasks = tasks.filter((t) => t.assigned_to === emp.id);
                   const activeTasksCount = empTasks.filter(
@@ -609,32 +577,32 @@ export default function TeamCockpitPage() {
                   return (
                     <div
                       key={emp.id}
-                      className="bg-[#0A0A10] border border-[#1E1E2C] rounded-xl p-5 space-y-3"
+                      className="bg-gray-50/60 border border-gray-200 rounded-2xl p-5 space-y-3"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <span className="font-bold text-white text-base">
+                          <span className="font-extrabold text-gray-900 text-sm">
                             {emp.first_name} {emp.last_name}
                           </span>
-                          <span className="text-xs text-slate-400 font-mono">({emp.role})</span>
+                          <span className="text-xs text-gray-500 font-medium">({emp.role})</span>
                         </div>
-                        <div className="text-xs font-mono text-slate-300">
-                          <span className="font-bold text-white">{activeTasksCount}</span> tâches en cours
+                        <div className="text-xs font-medium text-gray-700">
+                          <span className="font-bold text-gray-900">{activeTasksCount}</span> tâches en cours
                         </div>
                       </div>
 
                       {/* WORKLOAD BAR */}
-                      <div className="w-full bg-[#181824] h-3 rounded-full overflow-hidden flex">
+                      <div className="w-full bg-gray-200 h-3 rounded-full overflow-hidden flex">
                         <div
-                          className="bg-[#7B61FF] h-full"
+                          className="bg-[#800020] h-full"
                           style={{
                             width: `${Math.min(100, (activeTasksCount / 10) * 100)}%`,
                           }}
                         />
                       </div>
 
-                      <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
-                        <span>Statut: {activeTasksCount > 5 ? "Élevé" : "Modéré"}</span>
+                      <div className="flex items-center justify-between text-xs text-gray-500 font-medium">
+                        <span>Statut: {activeTasksCount > 5 ? "Surchargé" : "Normal"}</span>
                         <span>{blockedCount} tâche(s) bloquée(s)</span>
                       </div>
                     </div>
@@ -653,9 +621,9 @@ export default function TeamCockpitPage() {
             const columnTasks = tasks.filter((t) => t.status === statusColumn);
 
             return (
-              <div key={statusColumn} className="bg-[#12121A] border border-[#1E1E2C] rounded-2xl p-4 space-y-4">
-                <div className="flex items-center justify-between border-b border-[#181824] pb-3">
-                  <span className="font-bold text-sm font-mono text-gray-300 uppercase tracking-wider">
+              <div key={statusColumn} className="bg-white border border-gray-200 rounded-2xl p-4 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                  <span className="font-extrabold text-xs text-gray-900 uppercase tracking-wider">
                     {statusColumn === "TODO"
                       ? "À FAIRE"
                       : statusColumn === "IN_PROGRESS"
@@ -664,14 +632,14 @@ export default function TeamCockpitPage() {
                       ? "BLOQUÉ"
                       : "TERMINÉ"}
                   </span>
-                  <span className="px-2 py-0.5 bg-[#181824] text-xs font-mono rounded text-gray-400">
+                  <span className="px-2 py-0.5 bg-gray-100 text-xs font-bold rounded-lg text-gray-700">
                     {columnTasks.length}
                   </span>
                 </div>
 
                 <div className="space-y-3 min-h-[300px]">
                   {columnTasks.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-slate-500 font-mono border border-dashed border-[#1E1E2C] rounded-xl">
+                    <div className="p-4 text-center text-xs text-gray-400 font-medium border border-dashed border-gray-200 rounded-xl">
                       Aucune tâche
                     </div>
                   ) : (
@@ -681,52 +649,52 @@ export default function TeamCockpitPage() {
                       return (
                         <div
                           key={task.id}
-                          className="bg-[#0A0A10] border border-[#1E1E2C] rounded-xl p-4 space-y-3 hover:border-[#7B61FF]/40 transition-all"
+                          className="bg-gray-50/70 border border-gray-200 rounded-xl p-4 space-y-3 hover:border-[#800020]/30 transition-all shadow-2xs"
                         >
                           <div className="flex items-center justify-between text-xs">
                             <span
-                              className={`px-2 py-0.5 rounded font-mono font-semibold text-[10px] ${
+                              className={`px-2 py-0.5 rounded font-bold text-[10px] ${
                                 task.priority === "URGENT"
-                                  ? "bg-rose-500/20 text-rose-400"
+                                  ? "bg-rose-50 text-rose-700 border border-rose-200"
                                   : task.priority === "HIGH"
-                                  ? "bg-amber-500/20 text-amber-400"
-                                  : "bg-blue-500/20 text-blue-400"
+                                  ? "bg-amber-50 text-amber-700 border border-amber-200"
+                                  : "bg-blue-50 text-blue-700 border border-blue-200"
                               }`}
                             >
                               {task.priority}
                             </span>
-                            <span className="text-gray-500 text-[9px] font-mono">{task.source}</span>
+                            <span className="text-gray-400 text-[10px] font-mono">{task.source}</span>
                           </div>
 
-                          <h4 className="font-medium text-white text-sm">{task.title}</h4>
+                          <h4 className="font-bold text-gray-900 text-xs leading-snug">{task.title}</h4>
 
                           {task.description && (
-                            <p className="text-xs text-slate-400 line-clamp-2">{task.description}</p>
+                            <p className="text-xs text-gray-500 line-clamp-2">{task.description}</p>
                           )}
 
                           {task.blocker_reason && (
-                            <div className="p-2 bg-rose-500/10 border border-rose-500/20 rounded text-xs text-rose-300 font-mono">
+                            <div className="p-2 bg-rose-50 border border-rose-200 rounded text-xs text-rose-800 font-mono">
                               Motif: {task.blocker_reason}
                             </div>
                           )}
 
-                          <div className="flex items-center justify-between text-[11px] text-gray-400 pt-2 border-t border-[#181824] font-mono">
+                          <div className="flex items-center justify-between text-[11px] text-gray-500 pt-2 border-t border-gray-200 font-medium">
                             <span>
                               {assignee
                                 ? `${assignee.first_name} ${assignee.last_name?.[0]}.`
                                 : "Non assigné"}
                             </span>
                             {task.due_at && (
-                              <span>{new Date(task.due_at).toLocaleDateString("fr-FR")}</span>
+                              <span className="font-mono">{new Date(task.due_at).toLocaleDateString("fr-FR")}</span>
                             )}
                           </div>
 
                           {/* ACTION BUTTONS TO MOVE STATUS */}
-                          <div className="flex flex-wrap gap-1 pt-2 border-t border-[#181824]">
+                          <div className="flex flex-wrap gap-1 pt-2 border-t border-gray-200">
                             {statusColumn !== "IN_PROGRESS" && (
                               <button
                                 onClick={() => handleUpdateTaskStatus(task.id, "IN_PROGRESS")}
-                                className="px-2 py-1 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-[10px] font-mono rounded border border-blue-500/30 flex items-center gap-1"
+                                className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 text-[10px] font-bold rounded-lg border border-blue-200 flex items-center gap-1"
                               >
                                 <Play className="w-2.5 h-2.5" /> En cours
                               </button>
@@ -734,7 +702,7 @@ export default function TeamCockpitPage() {
                             {statusColumn !== "DONE" && (
                               <button
                                 onClick={() => handleUpdateTaskStatus(task.id, "DONE")}
-                                className="px-2 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-[10px] font-mono rounded border border-emerald-500/30 flex items-center gap-1"
+                                className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-lg border border-emerald-200 flex items-center gap-1"
                               >
                                 <CheckCircle2 className="w-2.5 h-2.5" /> Terminer
                               </button>
@@ -746,7 +714,7 @@ export default function TeamCockpitPage() {
                                   setBlockerReasonInput("");
                                   setIsBlockerModalOpen(true);
                                 }}
-                                className="px-2 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-[10px] font-mono rounded border border-rose-500/30 flex items-center gap-1"
+                                className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-bold rounded-lg border border-rose-200 flex items-center gap-1"
                               >
                                 <Ban className="w-2.5 h-2.5" /> Bloquer
                               </button>
@@ -766,18 +734,18 @@ export default function TeamCockpitPage() {
       {/* TAB CONTENT: SCORECARDS */}
       {activeTab === "scorecards" && (
         <div className="space-y-6">
-          <div className="bg-[#12121A] border border-[#1E1E2C] rounded-2xl p-6 space-y-4">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <Award className="w-5 h-5 text-[#7B61FF]" />
-              Fiches de Performance & Scorecards
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-2xs space-y-4">
+            <h2 className="text-base font-extrabold text-gray-900 flex items-center gap-2">
+              <Award className="w-4 h-4 text-[#800020]" />
+              <span>Fiches de Performance & Scorecards</span>
             </h2>
 
             {employees.length === 0 ? (
-              <div className="p-8 text-center bg-[#0A0A10] rounded-xl border border-dashed border-[#1E1E2C] text-slate-400 font-mono text-sm">
-                Aucune donnée d&apos;employé disponible.
+              <div className="p-8 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200 text-gray-500 text-xs font-medium">
+                Aucune donnée d'employé disponible en base de données.
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {employees.map((emp) => {
                   const empTasks = tasks.filter((t) => t.assigned_to === emp.id);
                   const total = empTasks.length;
@@ -800,40 +768,40 @@ export default function TeamCockpitPage() {
                   return (
                     <div
                       key={emp.id}
-                      className="bg-[#0A0A10] border border-[#1E1E2C] rounded-xl p-5 space-y-4"
+                      className="bg-gray-50/60 border border-gray-200 rounded-2xl p-5 space-y-4"
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <h3 className="font-bold text-white text-lg">
+                          <h3 className="font-extrabold text-gray-900 text-sm">
                             {emp.first_name} {emp.last_name}
                           </h3>
-                          <p className="text-xs text-slate-400 font-mono">{emp.role}</p>
+                          <p className="text-xs text-gray-500 font-semibold">{emp.role}</p>
                         </div>
                         {hasEnoughData ? (
                           <div className="text-right">
-                            <span className="text-2xl font-bold text-[#7B61FF] font-mono">{score}</span>
-                            <span className="text-xs text-slate-500 font-mono"> / 100</span>
+                            <span className="text-2xl font-black text-[#800020] font-mono">{score}</span>
+                            <span className="text-xs text-gray-400 font-mono"> / 100</span>
                           </div>
                         ) : (
-                          <span className="px-2.5 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[10px] font-mono font-bold rounded">
-                            INSUFFICIENT DATA
+                          <span className="px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold rounded-lg">
+                            DONNÉES INSUFFISANTES
                           </span>
                         )}
                       </div>
 
                       {hasEnoughData ? (
-                        <div className="grid grid-cols-2 gap-3 text-xs font-mono pt-2 border-t border-[#181824]">
-                          <div className="bg-[#12121A] p-2.5 rounded border border-[#1E1E2C]">
-                            <p className="text-slate-400">Tâches exécutées</p>
-                            <p className="text-base font-bold text-white mt-0.5">{done} / {total}</p>
+                        <div className="grid grid-cols-2 gap-3 text-xs pt-2 border-t border-gray-200 font-medium">
+                          <div className="bg-white p-3 rounded-xl border border-gray-200">
+                            <p className="text-gray-500">Tâches exécutées</p>
+                            <p className="text-sm font-extrabold text-gray-900 font-mono mt-0.5">{done} / {total}</p>
                           </div>
-                          <div className="bg-[#12121A] p-2.5 rounded border border-[#1E1E2C]">
-                            <p className="text-slate-400">Tâches en retard</p>
-                            <p className="text-base font-bold text-amber-400 mt-0.5">{overdue}</p>
+                          <div className="bg-white p-3 rounded-xl border border-gray-200">
+                            <p className="text-gray-500">Tâches en retard</p>
+                            <p className="text-sm font-extrabold text-amber-700 font-mono mt-0.5">{overdue}</p>
                           </div>
                         </div>
                       ) : (
-                        <p className="text-xs text-slate-500 font-mono pt-2 border-t border-[#181824]">
+                        <p className="text-xs text-gray-500 pt-2 border-t border-gray-200 font-medium">
                           Aucune tâche attribuée pour évaluer la performance.
                         </p>
                       )}
@@ -849,16 +817,16 @@ export default function TeamCockpitPage() {
       {/* TAB CONTENT: ESCALATIONS & BOTTLENECKS */}
       {activeTab === "escalations" && (
         <div className="space-y-6">
-          <div className="bg-[#12121A] border border-[#1E1E2C] rounded-2xl p-6 space-y-4">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-amber-400" />
-              Escalades & Tâches Bloquées
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-2xs space-y-4">
+            <h2 className="text-base font-extrabold text-gray-900 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
+              <span>Escalades & Tâches Bloquées</span>
             </h2>
 
             {blockedTasks === 0 && overdueTasks === 0 ? (
-              <div className="p-8 text-center bg-[#0A0A10] rounded-xl border border-dashed border-[#1E1E2C] text-slate-400 font-mono text-sm">
-                <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
-                Aucune escalade ni blocage actif. Tout est en ordre.
+              <div className="p-8 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200 text-gray-500 text-xs font-medium">
+                <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
+                Aucune escalade ni blocage actif. Tout est en ordre dans votre organisation.
               </div>
             ) : (
               <div className="space-y-3">
@@ -870,22 +838,22 @@ export default function TeamCockpitPage() {
                     return (
                       <div
                         key={task.id}
-                        className="bg-[#0A0A10] border border-amber-500/30 rounded-xl p-4 flex items-center justify-between"
+                        className="bg-gray-50/60 border border-amber-200 rounded-2xl p-4 flex items-center justify-between"
                       >
                         <div className="space-y-1">
                           <div className="flex items-center gap-3">
-                            <span className="px-2.5 py-1 bg-rose-500/20 text-rose-400 text-xs font-mono font-bold rounded">
+                            <span className="px-2.5 py-1 bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold rounded-lg">
                               {task.status}
                             </span>
-                            <h4 className="font-semibold text-white">{task.title}</h4>
+                            <h4 className="font-extrabold text-gray-900 text-xs">{task.title}</h4>
                           </div>
                           {task.blocker_reason && (
-                            <p className="text-xs text-rose-300 font-mono">Motif: {task.blocker_reason}</p>
+                            <p className="text-xs text-rose-700 font-mono">Motif: {task.blocker_reason}</p>
                           )}
                         </div>
-                        <div className="text-right text-xs text-slate-400 font-mono">
+                        <div className="text-right text-xs text-gray-500 font-medium">
                           <p>Assigné: {assignee ? `${assignee.first_name} ${assignee.last_name}` : "Non assigné"}</p>
-                          {task.due_at && <p>Échéance: {new Date(task.due_at).toLocaleDateString("fr-FR")}</p>}
+                          {task.due_at && <p className="font-mono">Échéance: {new Date(task.due_at).toLocaleDateString("fr-FR")}</p>}
                         </div>
                       </div>
                     );
@@ -898,94 +866,94 @@ export default function TeamCockpitPage() {
 
       {/* MODAL: ADD EMPLOYEE */}
       {isEmployeeModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#12121A] border border-[#1E1E2C] rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-scale-in">
-            <div className="p-6 border-b border-[#181824] flex items-center justify-between">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <UserPlus className="w-5 h-5 text-[#7B61FF]" />
-                Enregistrer un Employé
+        <div className="fixed inset-0 z-50 bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-lg overflow-hidden shadow-xl animate-scale-in">
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
+                <UserPlus className="w-4 h-4 text-[#800020]" />
+                <span>Enregistrer un Employé</span>
               </h3>
               <button
                 onClick={() => setIsEmployeeModalOpen(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-[#181824]"
+                className="text-gray-400 hover:text-gray-900 p-1 rounded-lg hover:bg-gray-100"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateEmployee} className="p-6 space-y-4">
+            <form onSubmit={handleCreateEmployee} className="p-5 space-y-4">
               {employeeError && (
-                <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-300 font-mono">
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 font-medium">
                   {employeeError}
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-mono text-slate-400 mb-1">Prénom *</label>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Prénom *</label>
                   <input
                     type="text"
                     value={empFirstName}
                     onChange={(e) => setEmpFirstName(e.target.value)}
                     placeholder="Jean"
                     required
-                    className="w-full bg-[#0A0A10] border border-[#1E1E2C] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#7B61FF]"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#800020]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-mono text-slate-400 mb-1">Nom *</label>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Nom *</label>
                   <input
                     type="text"
                     value={empLastName}
                     onChange={(e) => setEmpLastName(e.target.value)}
                     placeholder="Kaboré"
                     required
-                    className="w-full bg-[#0A0A10] border border-[#1E1E2C] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#7B61FF]"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#800020]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-mono text-slate-400 mb-1">Téléphone *</label>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Téléphone *</label>
                   <input
                     type="text"
                     value={empPhone}
                     onChange={(e) => setEmpPhone(e.target.value)}
                     placeholder="+226 70 00 00 00"
                     required
-                    className="w-full bg-[#0A0A10] border border-[#1E1E2C] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#7B61FF]"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#800020]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-mono text-slate-400 mb-1">Email (optionnel)</label>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Email (optionnel)</label>
                   <input
                     type="email"
                     value={empEmail}
                     onChange={(e) => setEmpEmail(e.target.value)}
                     placeholder="jean@willshop.bf"
-                    className="w-full bg-[#0A0A10] border border-[#1E1E2C] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#7B61FF]"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#800020]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-mono text-slate-400 mb-1">Poste / Fonction</label>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Poste / Fonction</label>
                   <input
                     type="text"
                     value={empJobTitle}
                     onChange={(e) => setEmpJobTitle(e.target.value)}
                     placeholder="ex: Commercial Terrain"
-                    className="w-full bg-[#0A0A10] border border-[#1E1E2C] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#7B61FF]"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#800020]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-mono text-slate-400 mb-1">Rôle RBAC *</label>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Rôle RBAC *</label>
                   <select
                     value={empRole}
                     onChange={(e: any) => setEmpRole(e.target.value)}
-                    className="w-full bg-[#0A0A10] border border-[#1E1E2C] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#7B61FF]"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#800020]"
                   >
                     <option value="COMMERCIAL">COMMERCIAL</option>
                     <option value="MANAGER">MANAGER</option>
@@ -996,26 +964,21 @@ export default function TeamCockpitPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-[#181824]">
+              <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={() => setIsEmployeeModalOpen(false)}
-                  className="px-4 py-2 bg-[#181824] hover:bg-[#202030] text-slate-300 text-xs font-mono rounded-xl transition-all"
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl transition-all"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingEmployee}
-                  className="px-5 py-2 bg-[#7B61FF] hover:bg-[#684DFE] text-white text-xs font-mono font-medium rounded-xl transition-all flex items-center gap-2"
+                  className="px-4 py-2 bg-[#800020] hover:bg-[#660019] text-white font-bold text-xs rounded-xl transition-all shadow-xs flex items-center gap-2"
                 >
-                  {isSubmittingEmployee ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" /> Enregistrement...
-                    </>
-                  ) : (
-                    "Enregistrer l'employé"
-                  )}
+                  {isSubmittingEmployee && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>Enregistrer l'employé</span>
                 </button>
               </div>
             </form>
@@ -1023,76 +986,76 @@ export default function TeamCockpitPage() {
         </div>
       )}
 
-      {/* MODAL: NEW TASK */}
+      {/* MODAL: ADD TASK */}
       {isTaskModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#12121A] border border-[#1E1E2C] rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-scale-in">
-            <div className="p-6 border-b border-[#181824] flex items-center justify-between">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <Plus className="w-5 h-5 text-[#7B61FF]" />
-                Créer une Nouvelle Tâche
+        <div className="fixed inset-0 z-50 bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-lg overflow-hidden shadow-xl animate-scale-in">
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
+                <Plus className="w-4 h-4 text-[#800020]" />
+                <span>Nouvelle Tâche</span>
               </h3>
               <button
                 onClick={() => setIsTaskModalOpen(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-[#181824]"
+                className="text-gray-400 hover:text-gray-900 p-1 rounded-lg hover:bg-gray-100"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateTask} className="p-6 space-y-4">
+            <form onSubmit={handleCreateTask} className="p-5 space-y-4">
               {taskError && (
-                <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-300 font-mono">
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 font-medium">
                   {taskError}
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-mono text-slate-400 mb-1">Titre de la tâche *</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Titre de la tâche *</label>
                 <input
                   type="text"
                   value={taskTitle}
                   onChange={(e) => setTaskTitle(e.target.value)}
-                  placeholder="ex: Relancer prospect livraison secteur 4"
+                  placeholder="Relancer client grands comptes..."
                   required
-                  className="w-full bg-[#0A0A10] border border-[#1E1E2C] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#7B61FF]"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#800020]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-mono text-slate-400 mb-1">Description</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Description</label>
                 <textarea
                   value={taskDescription}
                   onChange={(e) => setTaskDescription(e.target.value)}
-                  placeholder="Détails de la mission..."
                   rows={3}
-                  className="w-full bg-[#0A0A10] border border-[#1E1E2C] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#7B61FF]"
+                  placeholder="Détails complémentaires..."
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#800020]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-mono text-slate-400 mb-1">Responsable</label>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Assigner à</label>
                   <select
                     value={taskAssignedTo}
                     onChange={(e) => setTaskAssignedTo(e.target.value)}
-                    className="w-full bg-[#0A0A10] border border-[#1E1E2C] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#7B61FF]"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#800020]"
                   >
-                    <option value="">Sélectionner un employé</option>
-                    {employees.map((emp) => (
-                      <option key={emp.id} value={emp.id}>
-                        {emp.first_name} {emp.last_name} ({emp.role})
+                    <option value="">-- Sélectionner un employé --</option>
+                    {employees.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.first_name} {e.last_name} ({e.role})
                       </option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-mono text-slate-400 mb-1">Priorité</label>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Priorité</label>
                   <select
                     value={taskPriority}
                     onChange={(e: any) => setTaskPriority(e.target.value)}
-                    className="w-full bg-[#0A0A10] border border-[#1E1E2C] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#7B61FF]"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#800020]"
                   >
                     <option value="LOW">LOW</option>
                     <option value="MEDIUM">MEDIUM</option>
@@ -1103,35 +1066,30 @@ export default function TeamCockpitPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-mono text-slate-400 mb-1">Date limite (Échéance)</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Date d'échéance</label>
                 <input
                   type="date"
                   value={taskDueAt}
                   onChange={(e) => setTaskDueAt(e.target.value)}
-                  className="w-full bg-[#0A0A10] border border-[#1E1E2C] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#7B61FF]"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#800020]"
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-[#181824]">
+              <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={() => setIsTaskModalOpen(false)}
-                  className="px-4 py-2 bg-[#181824] hover:bg-[#202030] text-slate-300 text-xs font-mono rounded-xl transition-all"
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl transition-all"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingTask}
-                  className="px-5 py-2 bg-[#7B61FF] hover:bg-[#684DFE] text-white text-xs font-mono font-medium rounded-xl transition-all flex items-center gap-2"
+                  className="px-4 py-2 bg-[#800020] hover:bg-[#660019] text-white font-bold text-xs rounded-xl transition-all shadow-xs flex items-center gap-2"
                 >
-                  {isSubmittingTask ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" /> Création...
-                    </>
-                  ) : (
-                    "Créer la tâche"
-                  )}
+                  {isSubmittingTask && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>Créer la tâche</span>
                 </button>
               </div>
             </form>
@@ -1139,60 +1097,54 @@ export default function TeamCockpitPage() {
         </div>
       )}
 
-      {/* MODAL: BLOCK TASK REASON */}
-      {isBlockerModalOpen && selectedTaskToBlock && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#12121A] border border-[#1E1E2C] rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-scale-in">
-            <div className="p-6 border-b border-[#181824] flex items-center justify-between">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Ban className="w-5 h-5 text-rose-400" />
-                Signaler un Blocage
+      {/* MODAL: BLOCK TASK */}
+      {isBlockerModalOpen && (
+        <div className="fixed inset-0 z-50 bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-md overflow-hidden shadow-xl animate-scale-in">
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-sm font-extrabold text-rose-700 flex items-center gap-2">
+                <Ban className="w-4 h-4 text-rose-700" />
+                <span>Déclarer un Blocage</span>
               </h3>
               <button
                 onClick={() => setIsBlockerModalOpen(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-[#181824]"
+                className="text-gray-400 hover:text-gray-900 p-1 rounded-lg hover:bg-gray-100"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
-              <p className="text-xs text-slate-300 font-mono">
-                Tâche: <span className="font-bold text-white">{selectedTaskToBlock.title}</span>
+            <div className="p-5 space-y-4">
+              <p className="text-xs text-gray-600 font-medium">
+                Veuillez indiquer le motif du blocage pour la tâche{" "}
+                <strong className="text-gray-900">"{selectedTaskToBlock?.title}"</strong> :
               </p>
 
-              <div>
-                <label className="block text-xs font-mono text-slate-400 mb-1">
-                  Motif du blocage *
-                </label>
-                <textarea
-                  value={blockerReasonInput}
-                  onChange={(e) => setBlockerReasonInput(e.target.value)}
-                  placeholder="ex: Client injoignable par téléphone / Stock en rupture"
-                  rows={3}
-                  className="w-full bg-[#0A0A10] border border-[#1E1E2C] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-rose-400"
-                />
-              </div>
+              <textarea
+                value={blockerReasonInput}
+                onChange={(e) => setBlockerReasonInput(e.target.value)}
+                rows={3}
+                placeholder="ex: En attente de validation du client..."
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#800020]"
+              />
 
-              <div className="flex justify-end gap-3 pt-2">
+              <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={() => setIsBlockerModalOpen(false)}
-                  className="px-4 py-2 bg-[#181824] hover:bg-[#202030] text-slate-300 text-xs font-mono rounded-xl transition-all"
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl transition-all"
                 >
                   Annuler
                 </button>
                 <button
                   type="button"
                   onClick={() => {
-                    handleUpdateTaskStatus(
-                      selectedTaskToBlock.id,
-                      "BLOCKED",
-                      blockerReasonInput.trim() || "Blocage signalé"
-                    );
-                    setIsBlockerModalOpen(false);
+                    if (selectedTaskToBlock) {
+                      handleUpdateTaskStatus(selectedTaskToBlock.id, "BLOCKED", blockerReasonInput);
+                      setIsBlockerModalOpen(false);
+                    }
                   }}
-                  className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white text-xs font-mono font-medium rounded-xl transition-all"
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl transition-all shadow-xs"
                 >
                   Confirmer le blocage
                 </button>
