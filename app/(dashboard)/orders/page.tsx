@@ -45,6 +45,8 @@ export interface OrderRow {
 import { useEffect } from "react";
 import { createClient } from "@/src/infrastructure/supabase/client";
 
+export const dynamic = "force-dynamic";
+
 export default function OrdersListPage() {
   const router = useRouter();
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
@@ -135,7 +137,7 @@ export default function OrdersListPage() {
     });
   }, [orders, selectedStatus, searchQuery]);
 
-  const getStatusBadge = (status: OrderLifecycleStatus) => {
+  const getStatusBadge = (status: OrderLifecycleStatus | string) => {
     switch (status) {
       case "ORDER_INTENT":
         return { label: "Intention (Brouillon)", style: "bg-amber-50 text-amber-800 border-amber-200" };
@@ -153,6 +155,8 @@ export default function OrdersListPage() {
         return { label: "Échec livraison", style: "bg-rose-50 text-rose-800 border-rose-200" };
       case "RESCHEDULED":
         return { label: "Reprogrammée", style: "bg-orange-50 text-orange-800 border-orange-200" };
+      default:
+        return { label: status || "En attente", style: "bg-gray-100 text-gray-800 border-gray-200" };
     }
   };
 
@@ -260,8 +264,8 @@ export default function OrdersListPage() {
                         <div className="text-[10px] text-gray-400 font-mono">{ord.phone}</div>
                       </td>
                       <td className="p-4">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${badge.style}`}>
-                          {badge.label}
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${badge?.style || "bg-gray-100 text-gray-800 border-gray-200"}`}>
+                          {badge?.label || ord.status || "En attente"}
                         </span>
                       </td>
                       <td className="p-4 text-right font-mono font-extrabold text-gray-900">
