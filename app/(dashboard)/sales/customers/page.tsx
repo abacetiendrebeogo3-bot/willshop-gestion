@@ -121,8 +121,12 @@ export default function CustomersCRMPage() {
       });
 
       setCustomers(formatted);
-      if (formatted.length > 0 && !selectedCustomer) {
-        setSelectedCustomer(formatted[0]);
+      if (formatted.length > 0) {
+        if (!selectedCustomer || !formatted.find((c) => c.id === selectedCustomer.id)) {
+          setSelectedCustomer(formatted[0]);
+        }
+      } else {
+        setSelectedCustomer(null);
       }
     } catch (err) {
       console.error("[Customers CRM] Error fetching customers:", err);

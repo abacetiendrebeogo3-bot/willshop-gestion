@@ -100,6 +100,7 @@ export function Sidebar() {
   const CEO_ITEMS = [
     { name: "Accueil", href: "/ceo", icon: LayoutDashboard },
     { name: "Ventes", href: "/sales", icon: TrendingUp },
+    { name: "WhatsApp CRM", href: "/whatsapp", icon: MessageSquare },
     { name: "Commandes", href: "/orders", icon: ShoppingCart },
     { name: "Livraisons", href: "/delivery", icon: Truck },
     { name: "Équipe", href: "/team", icon: Users },
@@ -111,6 +112,7 @@ export function Sidebar() {
 
   const COMMERCIAL_ITEMS = [
     { name: "Accueil", href: "/sales/my-day", icon: Sun },
+    { name: "WhatsApp CRM", href: "/whatsapp", icon: MessageSquare },
     { name: "Conversations", href: "/sales", icon: MessageSquare },
     { name: "Clients", href: "/sales/customers", icon: Users },
     { name: "Commandes", href: "/orders", icon: ShoppingCart },

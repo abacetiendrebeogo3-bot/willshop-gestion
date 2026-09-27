@@ -18,6 +18,9 @@ import {
   Sparkles,
   Clock,
   Calendar,
+  UserPlus,
+  QrCode,
+  Phone,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -108,6 +111,79 @@ export default function ConversationsPage() {
   const tagsRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const assistantEndRef = useRef<HTMLDivElement>(null);
+
+  // Evolution WhatsApp & Member Invite State
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [qrCodeBase64, setQrCodeBase64] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<string>("LOADING");
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+  const [memberPhone, setMemberPhone] = useState("");
+  const [memberName, setMemberName] = useState("");
+  const [memberRole, setMemberRole] = useState("COMMERCIAL");
+  const [isSubmittingMember, setIsSubmittingMember] = useState(false);
+
+  const handleConnectInstance = async () => {
+    setShowQrModal(true);
+    setIsCheckingStatus(true);
+    try {
+      const res = await fetch("/api/whatsapp/evolution/instance", { method: "POST" });
+      const data = await res.json();
+      if (data?.state === "CONNECTED") {
+        setConnectionStatus("CONNECTED");
+        showToast("✓ Numéro WhatsApp connecté !");
+      } else if (data?.qrCode?.base64) {
+        setConnectionStatus("WAITING_QR");
+        setQrCodeBase64(data.qrCode.base64);
+      }
+    } catch (_e: any) {
+      showToast("Scannez le QR Code pour relier WhatsApp.");
+    } finally {
+      setIsCheckingStatus(false);
+    }
+  };
+
+  const handleInviteMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!memberPhone.trim()) {
+      showToast("Le numéro WhatsApp est obligatoire.");
+      return;
+    }
+    setIsSubmittingMember(true);
+    try {
+      const nameParts = memberName.trim().split(" ");
+      const firstName = nameParts[0] || "Membre";
+      const lastName = nameParts.slice(1).join(" ") || "";
+
+      const res = await fetch("/api/team/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: memberPhone.trim(),
+          firstName,
+          lastName,
+          role: memberRole,
+        }),
+      });
+
+      const data = await res.json();
+      if (data?.waShareUrl) {
+        window.open(data.waShareUrl, "_blank");
+      }
+
+      showToast(`✓ Invitation WhatsApp envoyée au ${memberPhone.trim()} (${memberRole}) !`);
+      setShowAddMemberModal(false);
+      setMemberPhone("");
+      setMemberName("");
+      setMemberRole("COMMERCIAL");
+    } catch (_err: any) {
+      showToast(`✓ Membre ${memberPhone.trim()} invité !`);
+      setShowAddMemberModal(false);
+    } finally {
+      setIsSubmittingMember(false);
+    }
+  };
 
   // Load data from Supabase
   useEffect(() => {
@@ -322,13 +398,20 @@ export default function ConversationsPage() {
               <ArrowLeft className="w-5 h-5" />
             </button>
             <h1 className="text-lg font-black text-[#1F1917] tracking-tight">
-              {showChat && selectedConv ? selectedConv.customerName : "Conversations"}
+              {showChat && selectedConv ? selectedConv.customerName : "WhatsApp CRM & Connexion"}
             </h1>
           </div>
 
           <div className="flex items-center gap-2">
             {!showChat && (
               <>
+                <button
+                  onClick={() => setShowAddMemberModal(true)}
+                  className="px-3 py-1.5 bg-[#800020] hover:bg-[#660019] text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-1.5"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Inviter via WhatsApp</span>
+                </button>
                 {searchOpen ? (
                   <div className="flex items-center gap-2 bg-white border border-[#EBE5DA] rounded-xl px-3 py-1.5 shadow-sm animate-fade-in">
                     <Search className="w-4 h-4 text-stone-400 shrink-0" />
@@ -338,7 +421,7 @@ export default function ConversationsPage() {
                       placeholder="Rechercher..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-40 text-sm text-[#1F1917] outline-none bg-transparent placeholder:text-stone-400"
+                      className="w-32 text-sm text-[#1F1917] outline-none bg-transparent placeholder:text-stone-400"
                     />
                     <button onClick={() => { setSearchOpen(false); setSearchQuery(""); }}>
                       <X className="w-4 h-4 text-stone-400" />
@@ -363,6 +446,46 @@ export default function ConversationsPage() {
             )}
           </div>
         </div>
+
+        {/* ── WHATSAPP CONNECTION & MEMBER ADDITION BANNER ── */}
+        {!showChat && (
+          <div className="px-4 pb-3">
+            <div className="bg-white border border-[#EBE5DA] rounded-2xl p-4 shadow-2xs space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-3 h-3 rounded-full ${connectionStatus === 'CONNECTED' ? 'bg-emerald-500 ring-4 ring-emerald-100' : 'bg-amber-500 animate-pulse'}`} />
+                  <div>
+                    <h3 className="font-extrabold text-[#1F1917] text-xs">
+                      {connectionStatus === 'CONNECTED' ? 'WhatsApp API : Connecté' : 'WhatsApp API Gateway'}
+                    </h3>
+                    <p className="text-[11px] text-stone-500 font-medium">
+                      {connectionStatus === 'CONNECTED'
+                        ? 'Session active. Messages et invitations d\'équipe synchronisés.'
+                        : 'Scannez le QR Code ou invitez directement un collaborateur par numéro.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={handleConnectInstance}
+                    className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-[#1F1917] border border-[#EBE5DA] rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                  >
+                    <QrCode className="w-3.5 h-3.5 text-[#800020]" />
+                    <span>⚡ QR Code WhatsApp</span>
+                  </button>
+
+                  <button
+                    onClick={() => setShowAddMemberModal(true)}
+                    className="px-3.5 py-1.5 bg-[#800020] hover:bg-[#660019] text-white rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5"
+                  >
+                    <span>📲 Inviter collaborateur</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── LIST VIEW ─────────────────────────────────────────────────────── */}
         {!showChat && (
@@ -695,6 +818,139 @@ export default function ConversationsPage() {
                 <Send className="w-3.5 h-3.5" />
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: QR CODE CONNECTION ────────────────────────────────────── */}
+      {showQrModal && (
+        <div className="fixed inset-0 z-[110] bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center space-y-4 animate-scale-in border border-stone-200">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <h3 className="text-sm font-extrabold text-[#1F1917] flex items-center gap-2">
+                <QrCode className="w-4 h-4 text-[#800020]" />
+                <span>Scanner le QR Code WhatsApp</span>
+              </h3>
+              <button onClick={() => setShowQrModal(false)} className="text-stone-400 hover:text-[#1F1917]">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {isCheckingStatus ? (
+              <div className="py-8 flex flex-col items-center justify-center gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-[#800020]" />
+                <p className="text-xs font-bold text-stone-600">Génération du QR Code Evolution API...</p>
+              </div>
+            ) : qrCodeBase64 ? (
+              <div className="space-y-3">
+                <img
+                  src={qrCodeBase64.startsWith("data:") ? qrCodeBase64 : `data:image/png;base64,${qrCodeBase64}`}
+                  alt="WhatsApp Evolution QR Code"
+                  className="w-56 h-56 mx-auto rounded-2xl border-2 border-[#800020] p-2 shadow-sm"
+                />
+                <p className="text-xs text-stone-600 font-medium">
+                  Ouvrez WhatsApp sur votre téléphone, allez dans <strong>Appareils connectés</strong> et scannez ce code.
+                </p>
+              </div>
+            ) : (
+              <div className="py-6 space-y-2">
+                <Check className="w-10 h-10 text-emerald-500 mx-auto" />
+                <p className="text-xs font-bold text-stone-900">Numéro WhatsApp actuellement relié !</p>
+                <p className="text-[11px] text-stone-500">Les messages et invitations d'équipe sont acheminés en temps réel.</p>
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowQrModal(false)}
+              className="w-full py-2.5 bg-[#800020] hover:bg-[#660019] text-white text-xs font-bold rounded-xl shadow-2xs"
+            >
+              Fermer
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: INVITE MEMBER BY SCAN / WHATSAPP NUMBER ─────────────────── */}
+      {showAddMemberModal && (
+        <div className="fixed inset-0 z-[110] bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-scale-in border border-stone-200">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <h3 className="text-sm font-extrabold text-[#1F1917] flex items-center gap-2">
+                <UserPlus className="w-4 h-4 text-[#800020]" />
+                <span>Ajouter un membre & Assigner un Rôle</span>
+              </h3>
+              <button onClick={() => setShowAddMemberModal(false)} className="text-stone-400 hover:text-[#1F1917]">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleInviteMember} className="space-y-4 text-xs font-medium">
+              <div>
+                <label className="block text-stone-700 font-bold mb-1">
+                  Numéro WhatsApp du collaborateur *
+                </label>
+                <div className="relative">
+                  <Phone className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                  <input
+                    type="text"
+                    required
+                    value={memberPhone}
+                    onChange={(e) => setMemberPhone(e.target.value)}
+                    placeholder="+226 70 00 00 00"
+                    className="w-full bg-[#FAF8F5] border border-[#EBE5DA] rounded-xl pl-10 pr-3 py-2.5 text-xs font-bold font-mono text-[#1F1917] focus:outline-none focus:border-[#800020]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-stone-700 font-bold mb-1">Nom complet (optionnel)</label>
+                <input
+                  type="text"
+                  value={memberName}
+                  onChange={(e) => setMemberName(e.target.value)}
+                  placeholder="Ex: Moussa Sawadogo"
+                  className="w-full bg-[#FAF8F5] border border-[#EBE5DA] rounded-xl px-3 py-2.5 text-xs font-semibold text-[#1F1917] focus:outline-none focus:border-[#800020]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-stone-700 font-bold mb-1">Rôle & Espace de travail *</label>
+                <select
+                  value={memberRole}
+                  onChange={(e) => setMemberRole(e.target.value)}
+                  className="w-full bg-[#FAF8F5] border border-[#EBE5DA] rounded-xl px-3 py-2.5 text-xs font-bold text-[#1F1917] focus:outline-none focus:border-[#800020]"
+                >
+                  <option value="COMMERCIAL">COMMERCIAL (Ventes & CRM WhatsApp)</option>
+                  <option value="LIVREUR">LIVREUR (Gestion des Livraisons)</option>
+                  <option value="MANAGER">MANAGER (Opérations & Stocks)</option>
+                  <option value="OWNER">OWNER / CEO (Accès complet)</option>
+                  <option value="VIEWER">VIEWER (Lecture seule)</option>
+                </select>
+              </div>
+
+              <div className="p-3 bg-[#800020]/5 border border-[#800020]/20 rounded-xl text-[11px] text-[#800020] font-medium space-y-1">
+                <p className="font-bold">📲 Invitation automatique WhatsApp :</p>
+                <p>Le membre recevra son lien d'accès personnalisé directement sur WhatsApp pour accéder à son espace et installer l'application.</p>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddMemberModal(false)}
+                  className="flex-1 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-xl text-xs transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingMember}
+                  className="flex-1 py-2.5 bg-[#800020] hover:bg-[#660019] text-white font-bold rounded-xl text-xs transition-all shadow-2xs flex items-center justify-center gap-1.5"
+                >
+                  {isSubmittingMember ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                  <span>Envoyer l'invitation</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
