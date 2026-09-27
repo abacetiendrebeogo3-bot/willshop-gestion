@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ShoppingBag, Eye, EyeOff, Lock, Mail, AlertCircle, ArrowRight, CheckCircle2, ArrowLeft, KeyRound } from "lucide-react";
@@ -16,8 +16,38 @@ export default function LoginPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Forgot password mode state
+  // Password Reset / Recovery States
   const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [isUpdatePasswordMode, setIsUpdatePasswordMode] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+
+    // Listen for PASSWORD_RECOVERY event when user clicks the reset link in email
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setIsUpdatePasswordMode(true);
+        setErrorMsg(null);
+        setSuccessMsg("Vous pouvez maintenant définir votre nouveau mot de passe ci-dessous.");
+      }
+    });
+
+    // Also check URL parameters and hash fragment (#access_token=...&type=recovery)
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash;
+      const search = window.location.search;
+      if (hash.includes("type=recovery") || search.includes("type=recovery") || search.includes("reset=true")) {
+        setIsUpdatePasswordMode(true);
+      }
+    }
+
+    return () => {
+      authListener?.subscription?.unsubscribe();
+    };
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,7 +103,7 @@ export default function LoginPage() {
 
     try {
       const supabase = createClient();
-      const origin = typeof window !== "undefined" ? window.location.origin : "https://willshop-os.vercel.app";
+      const origin = typeof window !== "undefined" ? window.location.origin : "https://willshop-gestion.vercel.app";
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: `${origin}/login?reset=true`,
       });
@@ -87,6 +117,40 @@ export default function LoginPage() {
       }
     } catch (err: any) {
       setErrorMsg(err?.message || "Erreur lors de la réinitialisation du mot de passe.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSaveNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword || newPassword.length < 6) {
+      setErrorMsg("Le mot de passe doit contenir au moins 6 caractères.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setErrorMsg("Les deux mots de passe ne correspondent pas.");
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+
+      if (error) {
+        setErrorMsg(error.message || "Impossible de mettre à jour le mot de passe.");
+      } else {
+        setSuccessMsg("Votre mot de passe a été mis à jour avec succès ! Redirection en cours...");
+        setTimeout(() => {
+          window.location.href = "/workspace-select";
+        }, 1500);
+      }
+    } catch (err: any) {
+      setErrorMsg(err?.message || "Erreur lors de la mise à jour du mot de passe.");
     } finally {
       setIsLoading(false);
     }
@@ -135,7 +199,83 @@ export default function LoginPage() {
 
         {/* Right Side: Form */}
         <div className="p-6 sm:p-10 flex flex-col justify-center space-y-6">
-          {!isForgotPassword ? (
+          {isUpdatePasswordMode ? (
+            /* Update Password Mode (Recovery) */
+            <div className="space-y-5">
+              <div className="text-center space-y-2">
+                <div className="w-12 h-12 rounded-2xl bg-[#800020]/10 text-[#800020] flex items-center justify-center mx-auto shadow-xs">
+                  <KeyRound className="w-6 h-6" />
+                </div>
+                <h2 className="text-2xl font-black text-[#1F1917]">Nouveau mot de passe</h2>
+                <p className="text-xs font-semibold text-stone-500 max-w-xs mx-auto">
+                  Définissez un nouveau mot de passe sécurisé pour votre compte.
+                </p>
+              </div>
+
+              {errorMsg && (
+                <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-medium flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
+
+              {successMsg && (
+                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-medium flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600" />
+                  <span>{successMsg}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSaveNewPassword} className="space-y-4 text-xs font-medium">
+                <div>
+                  <label className="block text-stone-700 font-bold mb-1.5">Nouveau mot de passe</label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      required
+                      minLength={6}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="6 caractères minimum"
+                      className="w-full bg-[#F8F5EE] border border-[#EBE5DA] rounded-xl pl-10 pr-10 py-2.5 font-bold text-[#1F1917] focus:outline-none focus:border-[#800020] focus:ring-2 focus:ring-[#800020]/20"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-[#1F1917]"
+                    >
+                      {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-stone-700 font-bold mb-1.5">Confirmer le nouveau mot de passe</label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      required
+                      minLength={6}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Répétez le mot de passe"
+                      className="w-full bg-[#F8F5EE] border border-[#EBE5DA] rounded-xl pl-10 pr-10 py-2.5 font-bold text-[#1F1917] focus:outline-none focus:border-[#800020] focus:ring-2 focus:ring-[#800020]/20"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-[#800020] hover:bg-[#590C1D] text-white py-3 rounded-xl text-xs font-extrabold shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <span>{isLoading ? "Enregistrement..." : "Mettre à jour le mot de passe"}</span>
+                </button>
+              </form>
+            </div>
+          ) : !isForgotPassword ? (
             /* Login View */
             <>
               <div className="text-center space-y-2">
