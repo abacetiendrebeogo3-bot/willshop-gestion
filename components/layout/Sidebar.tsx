@@ -34,7 +34,6 @@ export function Sidebar() {
   const router = useRouter();
   const { isOpen, closeSidebar } = useSidebar();
   const [activeSpace, setActiveSpace] = useState<ActiveSpace>("CEO");
-  const [showSpaceDropdown, setShowSpaceDropdown] = useState<boolean>(false);
   const [userName, setUserName] = useState<string>("Wilfried Tiendrebeogo");
 
   // Determine current active space from pathname
@@ -70,8 +69,8 @@ export function Sidebar() {
 
           if (roleRows && roleRows.length > 0) {
             const r = roleRows[0].role;
-            if (r === "LIVREUR") setActiveSpace("LIVREUR");
-            else if (r === "COMMERCIAL") setActiveSpace("COMMERCIAL");
+            if (r === "LIVREUR" || r === "DRIVER") setActiveSpace("LIVREUR");
+            else if (r === "COMMERCIAL" || r === "SALES") setActiveSpace("COMMERCIAL");
             else setActiveSpace("CEO");
           }
         }
@@ -81,14 +80,6 @@ export function Sidebar() {
     }
     fetchUserRole();
   }, []);
-
-  const handleSwitchSpace = (space: ActiveSpace) => {
-    setActiveSpace(space);
-    setShowSpaceDropdown(false);
-    if (space === "CEO") router.push("/ceo");
-    else if (space === "COMMERCIAL") router.push("/sales/my-day");
-    else if (space === "LIVREUR") router.push("/delivery/my-deliveries");
-  };
 
   const CEO_ITEMS = [
     { name: "Accueil", href: "/ceo", icon: LayoutDashboard },
@@ -162,18 +153,15 @@ export function Sidebar() {
             </button>
           </div>
 
-          {/* SPACE / ROLE SWITCHER SECTION */}
-          <div className="p-4 border-b border-[#EBE5DA] bg-[#F2ECE1]/60 shrink-0 relative">
+          {/* SPACE / ROLE DISPLAY SECTION (Non-clickable) */}
+          <div className="p-4 border-b border-[#EBE5DA] bg-[#F2ECE1]/60 shrink-0">
             <label className="text-[10px] font-black text-stone-500 uppercase tracking-wider block mb-1.5 px-1">
               Espace actif
             </label>
 
-            <button
-              onClick={() => setShowSpaceDropdown(!showSpaceDropdown)}
-              className="w-full bg-[#800020] text-white hover:bg-[#590C1D] px-3.5 py-2.5 rounded-xl text-xs font-extrabold flex items-center justify-between shadow-xs transition-all group"
-            >
+            <div className="w-full bg-[#800020] text-white px-3.5 py-2.5 rounded-xl text-xs font-extrabold flex items-center justify-between shadow-xs select-none">
               <div className="flex items-center gap-2.5">
-                <span className="w-2 h-2 rounded-full bg-[#D4A843] animate-pulse"></span>
+                <span className="w-2 h-2 rounded-full bg-[#D4A843]"></span>
                 <span>
                   {activeSpace === "CEO"
                     ? "Ma Direction (CEO)"
@@ -182,41 +170,7 @@ export function Sidebar() {
                     : "Mes Livraisons (Livreur)"}
                 </span>
               </div>
-              <ChevronDown className={`w-4 h-4 text-[#D4A843] transition-transform ${showSpaceDropdown ? "rotate-180" : ""}`} />
-            </button>
-
-            {/* Space Selection Dropdown */}
-            {showSpaceDropdown && (
-              <div className="absolute left-4 right-4 top-16 bg-white border border-[#EBE5DA] rounded-xl shadow-xl z-50 p-1.5 space-y-1 animate-fade-in">
-                <button
-                  onClick={() => handleSwitchSpace("CEO")}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-between transition-colors ${
-                    activeSpace === "CEO" ? "bg-[#800020]/10 text-[#800020]" : "text-[#1F1917] hover:bg-[#F8F5EE]"
-                  }`}
-                >
-                  <span>🧭 CEO / Owner (Ma Direction)</span>
-                  {activeSpace === "CEO" && <span className="text-[10px] bg-[#800020] text-white px-1.5 py-0.5 rounded font-bold">Actif</span>}
-                </button>
-                <button
-                  onClick={() => handleSwitchSpace("COMMERCIAL")}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-between transition-colors ${
-                    activeSpace === "COMMERCIAL" ? "bg-[#800020]/10 text-[#800020]" : "text-[#1F1917] hover:bg-[#F8F5EE]"
-                  }`}
-                >
-                  <span>☀️ Commercial (Ma Journée)</span>
-                  {activeSpace === "COMMERCIAL" && <span className="text-[10px] bg-[#800020] text-white px-1.5 py-0.5 rounded font-bold">Actif</span>}
-                </button>
-                <button
-                  onClick={() => handleSwitchSpace("LIVREUR")}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-between transition-colors ${
-                    activeSpace === "LIVREUR" ? "bg-[#800020]/10 text-[#800020]" : "text-[#1F1917] hover:bg-[#F8F5EE]"
-                  }`}
-                >
-                  <span>🚚 Livreur (Mes Livraisons)</span>
-                  {activeSpace === "LIVREUR" && <span className="text-[10px] bg-[#800020] text-white px-1.5 py-0.5 rounded font-bold">Actif</span>}
-                </button>
-              </div>
-            )}
+            </div>
           </div>
 
           {/* Navigation Items */}

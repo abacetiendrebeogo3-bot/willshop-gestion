@@ -16,14 +16,18 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
   private readonly apiKey: string;
 
   constructor(baseUrl?: string, apiKey?: string) {
-    const rawUrl = baseUrl || process.env.EVOLUTION_API_URL || '';
+    const rawUrl = baseUrl || process.env.EVOLUTION_API_URL || process.env.NEXT_PUBLIC_EVOLUTION_API_URL || '';
     const rawKey = apiKey || process.env.EVOLUTION_API_KEY || '';
     this.baseUrl = rawUrl.trim().replace(/\/+$/, '');
     this.apiKey = rawKey.trim().replace(/^["']|["']$/g, '');
   }
 
   public isConfigured(): boolean {
-    return Boolean(this.baseUrl && this.apiKey);
+    const configured = Boolean(this.baseUrl && this.apiKey);
+    if (!configured) {
+      console.warn(`[EVOLUTION_API_CONFIG] Unconfigured: baseUrl="${this.baseUrl}", apiKeyPresent=${Boolean(this.apiKey)}`);
+    }
+    return configured;
   }
 
   public getConfigError(): string | null {
@@ -180,9 +184,11 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
     error?: string;
   }> {
     if (!this.isConfigured()) {
+      console.warn(`[EVOLUTION_API] createInstance aborted — missing configuration.`);
       return { success: false, instanceName, error: this.getConfigError()! };
     }
 
+    console.log(`[EVOLUTION_API] 🚀 STEP 1: Creating instance '${instanceName}' on server ${this.baseUrl}...`);
     try {
       const response = await fetch(`${this.baseUrl}/instance/create`, {
         method: 'POST',
@@ -202,20 +208,22 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
 
       if (!response.ok) {
         const errText = await response.text().catch(() => '');
-        // If instance already exists, proceed to fetch status/qr
+        console.warn(`[EVOLUTION_API] instance/create HTTP ${response.status}: ${errText}`);
         if (response.status === 403 || errText.includes('already exists') || errText.includes('in use')) {
+          console.log(`[EVOLUTION_API] Instance '${instanceName}' already exists.`);
           return { success: true, instanceName, status: 'EXISTS' };
         }
         return { success: false, instanceName, error: `HTTP_${response.status}: ${errText}` };
       }
 
       const resData = await response.json();
+      console.log(`[EVOLUTION_API] Instance '${instanceName}' created successfully:`, resData);
       const qrData = resData?.qrcode || resData?.hash || {};
 
       if (webhookUrl) {
         const whResult = await this.setWebhook(instanceName, webhookUrl);
         if (!whResult.success) {
-          console.error(`[createInstance] setWebhook non-fatal warning: ${whResult.error}`);
+          console.error(`[EVOLUTION_API] setWebhook warning: ${whResult.error}`);
         }
       }
 
@@ -230,6 +238,7 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
         },
       };
     } catch (err: any) {
+      console.error(`[EVOLUTION_API] createInstance exception:`, err);
       return { success: false, instanceName, error: err.message };
     }
   }
@@ -247,12 +256,14 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
     if (!this.isConfigured()) {
       return { state: 'ERROR', error: this.getConfigError()! };
     }
+    console.log(`[EVOLUTION_API] 📡 STEP 2: Checking connection state for instance '${instanceName}'...`);
     try {
       const response = await fetch(`${this.baseUrl}/instance/connectionState/${instanceName}`, {
         headers: { apikey: this.apiKey },
       });
 
       if (!response.ok) {
+        console.warn(`[EVOLUTION_API] connectionState HTTP ${response.status}`);
         return { state: 'DISCONNECTED', error: `HTTP_${response.status}` };
       }
 
@@ -274,6 +285,8 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
         }
       }
 
+      console.log(`[EVOLUTION_API] connectionState rawState='${rawState}', phoneNumber='${phoneNumber}'`);
+
       if (rawState === 'open' || rawState === 'connected') {
         return { state: 'CONNECTED', rawState, ownerJid, phoneNumber };
       }
@@ -283,6 +296,7 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
 
       return { state: 'DISCONNECTED', rawState, ownerJid, phoneNumber };
     } catch (err: any) {
+      console.error(`[EVOLUTION_API] getConnectionState exception:`, err);
       return { state: 'ERROR', error: err.message };
     }
   }
@@ -297,6 +311,7 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
     pairingCode?: string;
     error?: string;
   }> {
+    console.log(`[EVOLUTION_API] 📷 STEP 3: Requesting QR Code for instance '${instanceName}'...`);
     try {
       const response = await fetch(`${this.baseUrl}/instance/connect/${instanceName}`, {
         headers: { apikey: this.apiKey },
@@ -304,6 +319,7 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
 
       if (!response.ok) {
         const errText = await response.text().catch(() => '');
+        console.warn(`[EVOLUTION_API] instance/connect HTTP ${response.status}: ${errText}`);
         return { success: false, error: `HTTP_${response.status}: ${errText}` };
       }
 
@@ -312,8 +328,10 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
       const code = data?.code || data?.qrcode?.code || '';
       const pairingCode = data?.pairingCode || data?.qrcode?.pairingCode || '';
 
+      console.log(`[EVOLUTION_API] QR Code fetched successfully (hasBase64=${Boolean(base64)})`);
       return { success: true, base64, code, pairingCode };
     } catch (err: any) {
+      console.error(`[EVOLUTION_API] getQrCode exception:`, err);
       return { success: false, error: err.message };
     }
   }
@@ -322,6 +340,7 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
    * Sets up or updates the webhook on Evolution API.
    */
   async setWebhook(instanceName: string, webhookUrl: string): Promise<{ success: boolean; error?: string }> {
+    console.log(`[EVOLUTION_API] 🔗 STEP 4: Setting webhook for instance '${instanceName}' -> ${webhookUrl}`);
     try {
       const response = await fetch(`${this.baseUrl}/webhook/set/${instanceName}`, {
         method: 'POST',
@@ -347,16 +366,17 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
 
       if (!response.ok) {
         const errText = await response.text().catch(() => '');
-        console.error(`[EvolutionAPI setWebhook Error] HTTP ${response.status} for instance ${instanceName}:`, errText);
+        console.error(`[EVOLUTION_API] setWebhook HTTP ${response.status} for instance '${instanceName}':`, errText);
         return {
           success: false,
           error: `HTTP_${response.status}: ${errText}`,
         };
       }
 
+      console.log(`[EVOLUTION_API] Webhook set successfully for instance '${instanceName}'`);
       return { success: true };
     } catch (err: any) {
-      console.error(`[EvolutionAPI setWebhook Exception] for instance ${instanceName}:`, err);
+      console.error(`[EVOLUTION_API] setWebhook exception:`, err);
       return {
         success: false,
         error: err.message || 'Erreur réseau/inconnue lors de la configuration du webhook',

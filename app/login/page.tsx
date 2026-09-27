@@ -39,11 +39,14 @@ export default function LoginPage() {
 
       if (error) {
         let msg = error.message;
-        if (msg.includes("Email not confirmed")) {
-          msg =
-            "Email non confirmé dans Supabase Auth. Cliquez ci-dessous pour accéder directement à votre espace d'entreprise.";
-        } else if (msg.includes("Invalid login credentials")) {
-          msg = "Identifiants incorrects. Vérifiez votre email et mot de passe.";
+        if (msg.includes("Invalid login credentials")) {
+          msg = "Mot de passe incorrect ou compte inexistant. Veuillez vérifier vos identifiants.";
+        } else if (msg.includes("Email not confirmed")) {
+          msg = "Votre adresse email n'est pas encore confirmée. Veuillez vérifier votre boîte de réception.";
+        } else if (msg.includes("User not found")) {
+          msg = "Aucun compte trouvé avec cette adresse email.";
+        } else if (msg.includes("Too many requests") || msg.includes("rate limit")) {
+          msg = "Trop de tentatives de connexion. Veuillez patienter un instant avant de réessayer.";
         }
         setErrorMsg(msg);
         setIsLoading(false);
@@ -144,20 +147,11 @@ export default function LoginPage() {
               </div>
 
               {errorMsg && (
-                <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-medium space-y-2">
+                <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-medium">
                   <div className="flex items-start gap-2 font-bold">
                     <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
                     <span>{errorMsg}</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      window.location.href = "/workspace-select";
-                    }}
-                    className="w-full mt-2 py-2.5 px-3 rounded-lg bg-[#800020] text-white font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-[#660019] transition-colors cursor-pointer"
-                  >
-                    Accéder directement à l'espace entreprise <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
                 </div>
               )}
 
@@ -231,23 +225,6 @@ export default function LoginPage() {
                   <span>{isLoading ? "Connexion..." : "Se connecter"}</span>
                 </button>
               </form>
-
-              <div className="relative text-center text-xs">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-[#EBE5DA]" />
-                </div>
-                <span className="relative bg-white px-2 text-stone-400 font-bold">ou</span>
-              </div>
-
-              <button
-                onClick={() => {
-                  window.location.href = "/workspace-select";
-                }}
-                type="button"
-                className="w-full bg-[#F8F5EE] hover:bg-[#F2ECE1] text-[#1F1917] border border-[#EBE5DA] py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <span>Accéder directement à l'espace entreprise</span>
-              </button>
 
               <div className="text-center text-xs pt-2">
                 <span className="text-stone-500 font-medium">Nouvel utilisateur ? </span>

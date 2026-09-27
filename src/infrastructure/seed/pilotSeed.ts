@@ -26,6 +26,10 @@ export interface PilotSeedDataResult {
 
 export class PilotDataSeeder {
   public static generatePilotSeedData(orgId: string = 'org_willshop_pilot'): PilotSeedDataResult {
+    if (process.env.ALLOW_SEED_DATA !== 'true' || process.env.NODE_ENV === 'production') {
+      throw new Error('⛔ SEED PROTECTION TRIGGERED: Demo seed data generation is disabled in production.');
+    }
+
     const seededAt = new Date();
 
     const products: Product[] = [

@@ -34,6 +34,11 @@ function extractProjectRef(supabaseUrl: string): string {
 }
 
 async function seedTruthDataset() {
+  if (process.env.ALLOW_SEED_DATA !== 'true' || process.env.NODE_ENV === 'production') {
+    console.error('⛔ SEED PROTECTION TRIGGERED: Seed scripts cannot be executed against production database unless ALLOW_SEED_DATA=true is set in non-production environment.');
+    process.exit(1);
+  }
+
   const projectRef = extractProjectRef(url);
   if (!dbUrl) {
     dbUrl = `postgres://postgres:${encodeURIComponent(dbPassword)}@db.${projectRef}.supabase.co:5432/postgres`;
