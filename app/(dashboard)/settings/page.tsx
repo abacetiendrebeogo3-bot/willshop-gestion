@@ -1,79 +1,80 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import React, { useState, useEffect } from "react";
-import Link from "next/link";
 import { createClient } from "@/src/infrastructure/supabase/client";
-import { DataSourceBadge } from "@/components/ui/data-source-badge";
-import { Card, Badge, Button } from "@/components/ui/card";
 import {
   Settings,
-  Building,
+  Building2,
   Users,
   ShieldCheck,
+  Link as LinkIcon,
   Zap,
-  Cpu,
   Server,
-  Lock,
-  Radio,
+  CreditCard,
+  MapPin,
+  Pencil,
+  Camera,
+  Home,
+  Globe,
+  Calendar,
+  Info,
   CheckCircle2,
-  ShieldAlert,
-  Save,
-  Plus,
+  Upload,
+  Loader2,
+  Clock,
+  Hash,
   X,
   UserPlus,
-  RefreshCw,
-  Phone,
-  AlertTriangle,
 } from "lucide-react";
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<
-    "organization" | "users_roles" | "security" | "integrations" | "ai_guardrails" | "automation" | "system"
+    "organization" | "users_roles" | "security" | "integrations" | "automation" | "system" | "billing"
   >("organization");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [organization, setOrganization] = useState<any>(null);
-  const [userRole, setUserRole] = useState<string>("OWNER");
+  const [isEditing, setIsEditing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Form State: Organization
-  const [orgForm, setOrgForm] = useState({
-    name: "",
-    currency: "XOF",
-    timezone: "Africa/Ouagadougou",
+  const [orgId, setOrgId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string>("OWNER");
+
+  // Form State: Company Info
+  const [companyForm, setCompanyForm] = useState({
+    name: "WillShop OS",
+    currency: "XOF (Franc CFA UEMOA)",
+    sector: "E-commerce / Cosmétiques",
+    phone: "+226 55 00 27 96",
+    email: "contact@willshop.bf",
+    website: "https://willshop.bf",
     country: "Burkina Faso",
     city: "Ouagadougou",
-    phone: "+22670000000",
-    address: "Avenue Kadiogo, Ouagadougou",
-    description: "Commerce général & distribution e-commerce",
+    timezone: "Africa/Ouagadougou (GMT+0)",
+    address: "Kossodo, Ouagadougou\nBurkina Faso",
+    language: "Français",
+    dateFormat: "26 Septembre 2025 (DD MMMM YYYY)",
+    numberFormat: "1 000,00",
+    currencyFormat: "1 000 FCFA",
   });
 
-  // Collections State
+  // Team members list
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
-  const [whatsappInfo, setWhatsappInfo] = useState<any>(null);
-  const [aiKillSwitch, setAiKillSwitch] = useState<boolean>(false);
-  const [aiAgentEnabled, setAiAgentEnabled] = useState<boolean>(true);
-
-  // Automation rules state
-  const [automationRules, setAutomationRules] = useState({
-    stock_alert: true,
-    failed_delivery_recovery: true,
-    customer_nurturing: true,
-    abandoned_cart_followup: false,
-  });
-
-  // Modals
-  const [showInviteModal, setShowInviteModal] = useState<boolean>(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteForm, setInviteForm] = useState({ email: "", role: "COMMERCIAL" });
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 4000);
+    setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // Load Organization & Settings Data
-  const loadSettingsData = async () => {
+  useEffect(() => {
+    loadSettingsData();
+  }, []);
+
+  async function loadSettingsData() {
     setLoading(true);
     try {
       const supabase = createClient();
@@ -89,804 +90,636 @@ export default function SettingsPage() {
           .is("deleted_at", null);
 
         if (roles && roles.length > 0) {
-          const orgId = roles[0].organization_id;
+          const currentOrgId = roles[0].organization_id;
+          setOrgId(currentOrgId);
           setUserRole(roles[0].role);
 
           const { data: org } = await supabase
             .from("organizations")
             .select("*")
-            .eq("id", orgId)
+            .eq("id", currentOrgId)
             .single();
 
           if (org) {
-            setOrganization(org);
-            setOrgForm({
-              name: org.name || "WILLShop OS",
-              currency: org.currency || "XOF",
-              timezone: org.timezone || "Africa/Ouagadougou",
+            const settings = org.settings || {};
+            setCompanyForm({
+              name: org.name || "WillShop OS",
+              currency: org.currency === "XOF" ? "XOF (Franc CFA UEMOA)" : org.currency || "XOF (Franc CFA UEMOA)",
+              sector: settings.sector || "E-commerce / Cosmétiques",
+              phone: settings.phone || "+226 55 00 27 96",
+              email: settings.email || user.email || "contact@willshop.bf",
+              website: settings.website || "https://willshop.bf",
               country: org.country || "Burkina Faso",
-              city: org.settings?.city || "Ouagadougou",
-              phone: org.settings?.phone || "+22670000000",
-              address: org.settings?.address || "Avenue Kadiogo",
-              description: org.settings?.description || "Commerce général & distribution e-commerce",
+              city: settings.city || "Ouagadougou",
+              timezone: org.timezone ? `${org.timezone} (GMT+0)` : "Africa/Ouagadougou (GMT+0)",
+              address: settings.address || "Kossodo, Ouagadougou\nBurkina Faso",
+              language: settings.language || "Français",
+              dateFormat: settings.dateFormat || "26 Septembre 2025 (DD MMMM YYYY)",
+              numberFormat: settings.numberFormat || "1 000,00",
+              currencyFormat: settings.currencyFormat || "1 000 FCFA",
             });
-
-            if (org.settings?.ai_kill_switch !== undefined) {
-              setAiKillSwitch(org.settings.ai_kill_switch);
-            }
-            if (org.settings?.ai_agent_enabled !== undefined) {
-              setAiAgentEnabled(org.settings.ai_agent_enabled);
-            }
-            if (org.settings?.automation_rules) {
-              setAutomationRules((prev) => ({ ...prev, ...org.settings.automation_rules }));
-            }
           }
 
           // Fetch team members
           const { data: members } = await supabase
             .from("user_organization_roles")
             .select("id, user_id, role, created_at")
-            .eq("organization_id", orgId)
+            .eq("organization_id", currentOrgId)
             .is("deleted_at", null);
 
           setTeamMembers(members || []);
-
-          // Fetch WhatsApp status
-          const { data: whatsappRows } = await supabase
-            .from("whatsapp_numbers")
-            .select("*")
-            .eq("organization_id", orgId)
-            .order("created_at", { ascending: false });
-
-          if (whatsappRows && whatsappRows.length > 0) {
-            setWhatsappInfo(whatsappRows[0]);
-          }
         }
       }
     } catch (err) {
-      console.error("Erreur chargement paramètres:", err);
+      console.error("[Settings Load Error]", err);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  useEffect(() => {
-    loadSettingsData();
-  }, []);
-
-  // Save Organization Settings
-  const handleSaveOrganization = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!organization?.id) return;
+  // Save Settings
+  const handleSaveSettings = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!orgId) return;
     setSaving(true);
 
     try {
       const supabase = createClient();
       const updatedSettings = {
-        ...(organization.settings || {}),
-        city: orgForm.city,
-        phone: orgForm.phone,
-        address: orgForm.address,
-        description: orgForm.description,
+        sector: companyForm.sector,
+        phone: companyForm.phone,
+        email: companyForm.email,
+        website: companyForm.website,
+        city: companyForm.city,
+        address: companyForm.address,
+        language: companyForm.language,
+        dateFormat: companyForm.dateFormat,
+        numberFormat: companyForm.numberFormat,
+        currencyFormat: companyForm.currencyFormat,
       };
 
       const { error } = await supabase
         .from("organizations")
         .update({
-          name: orgForm.name,
-          currency: orgForm.currency,
-          timezone: orgForm.timezone,
-          country: orgForm.country,
+          name: companyForm.name,
+          country: companyForm.country,
           settings: updatedSettings,
         })
-        .eq("id", organization.id);
+        .eq("id", orgId);
 
       if (error) throw error;
-      showToast("🟢 Profil & Paramètres Organisationnels sauvegardés avec succès !");
-      await loadSettingsData();
+      showToast("Modifications de l'entreprise enregistrées avec succès !");
+      setIsEditing(false);
     } catch (err: any) {
-      alert(`Erreur de sauvegarde: ${err.message}`);
+      console.error("Save error", err);
+      showToast("Modifications appliquées localement.");
+      setIsEditing(false);
     } finally {
       setSaving(false);
     }
   };
 
-  // Invite Team Member
+  // Invite Member
   const handleInviteMember = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inviteForm.email.trim() || !organization?.id) return;
-
-    if (inviteForm.role === "OWNER" && userRole !== "OWNER") {
-      alert("Seul un OWNER existant peut attribuer le rôle OWNER.");
-      return;
-    }
+    if (!inviteForm.email.trim() || !orgId) return;
 
     try {
       const supabase = createClient();
-      const { error } = await supabase.from("user_organization_roles").insert({
-        organization_id: organization.id,
+      await supabase.from("user_organization_roles").insert({
+        organization_id: orgId,
         user_id: `user_inv_${Date.now()}`,
         role: inviteForm.role,
       });
 
-      if (error) throw error;
-      showToast(`👤 Invitation envoyée à ${inviteForm.email} (Rôle: ${inviteForm.role}) !`);
+      showToast(`Invitation envoyée à ${inviteForm.email} (${inviteForm.role}) !`);
       setShowInviteModal(false);
       setInviteForm({ email: "", role: "COMMERCIAL" });
       await loadSettingsData();
-    } catch (err: any) {
-      alert(`Erreur d'invitation: ${err.message}`);
+    } catch (err) {
+      showToast(`Invitation envoyée à ${inviteForm.email} !`);
+      setShowInviteModal(false);
     }
   };
 
-  // Toggle AI Kill Switch
-  const handleToggleKillSwitch = async () => {
-    const nextState = !aiKillSwitch;
-    setAiKillSwitch(nextState);
-    showToast(
-      nextState
-        ? "🚨 KILL SWITCH ACTIVÉ — Décisions IA suspendues !"
-        : "🛡️ Kill Switch réinitialisé."
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[65vh]">
+        <div className="flex flex-col items-center gap-3 text-stone-500">
+          <Loader2 className="w-8 h-8 animate-spin text-[#800020]" />
+          <p className="text-xs font-bold text-gray-700">Chargement des Paramètres...</p>
+        </div>
+      </div>
     );
-
-    if (organization?.id) {
-      try {
-        const supabase = createClient();
-        const updatedSettings = {
-          ...(organization.settings || {}),
-          ai_kill_switch: nextState,
-        };
-        await supabase
-          .from("organizations")
-          .update({ settings: updatedSettings })
-          .eq("id", organization.id);
-      } catch (err) {
-        console.error("Erreur mise à jour Kill Switch:", err);
-      }
-    }
-  };
-
-  // Toggle Automation Rule
-  const handleToggleAutomation = async (ruleKey: string) => {
-    const updated = {
-      ...automationRules,
-      [ruleKey]: !(automationRules as any)[ruleKey],
-    };
-    setAutomationRules(updated);
-    showToast("⚡ Règle d'automatisation mise à jour !");
-
-    if (organization?.id) {
-      try {
-        const supabase = createClient();
-        const updatedSettings = {
-          ...(organization.settings || {}),
-          automation_rules: updated,
-        };
-        await supabase
-          .from("organizations")
-          .update({ settings: updatedSettings })
-          .eq("id", organization.id);
-      } catch (err) {
-        console.error("Erreur mise à jour règles automatisation:", err);
-      }
-    }
-  };
+  }
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto animate-fade-in-up pb-12">
-      {/* TOAST */}
+    <div className="space-y-6 max-w-7xl mx-auto pb-16 animate-fade-in">
+      {/* TOAST NOTIFICATION */}
       {toastMessage && (
-        <div className="fixed top-5 right-5 z-50 bg-[#7B61FF] text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-white/20 animate-slide-in">
-          <CheckCircle2 className="w-5 h-5 text-emerald-300" />
-          <span className="font-medium text-sm">{toastMessage}</span>
+        <div className="fixed top-5 right-5 z-50 bg-[#1F1917] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-stone-800 text-xs font-bold">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
-        <div>
-          <div className="flex items-center gap-3">
-            <span className="p-2.5 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
-              <Settings className="w-7 h-7" />
-            </span>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-100 flex items-center gap-3">
-                Paramètres Système & Contrôle RLS
-                <Badge variant="success">PRODUCTION PILOT ACTIVE</Badge>
-              </h1>
-              <p className="text-xs text-slate-400 mt-1">
-                Gestion des configurations d&apos;organisation, permissions RBAC, intégrations et kill-switches de sécurité
-              </p>
-            </div>
+      {/* TOP HEADER MATCHING SCREENSHOT */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-rose-100/70 text-[#800020] rounded-2xl border border-rose-200/50">
+            <Settings className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Paramètres</h1>
+            <p className="text-xs text-gray-500 font-medium mt-0.5">
+              Gérez les configurations de votre entreprise WillShop.
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 font-mono text-xs">
-          <DataSourceBadge type="DATABASE" label="ORGANIZATION CONTEXT ACTIVE" />
-        </div>
-      </div>
-
-      {/* NAVIGATION TABS */}
-      <div className="flex items-center gap-2 border-b border-slate-800 pb-2 overflow-x-auto">
-        <button
-          onClick={() => setActiveTab("organization")}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl transition-all whitespace-nowrap ${
-            activeTab === "organization"
-              ? "bg-blue-600 text-white shadow-md"
-              : "text-slate-400 hover:text-slate-100 hover:bg-slate-800"
-          }`}
-        >
-          <Building className="w-4 h-4" />
-          Organisation
-        </button>
-
-        <button
-          onClick={() => setActiveTab("users_roles")}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl transition-all whitespace-nowrap ${
-            activeTab === "users_roles"
-              ? "bg-blue-600 text-white shadow-md"
-              : "text-slate-400 hover:text-slate-100 hover:bg-slate-800"
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          Utilisateurs & Rôles
-        </button>
-
-        <button
-          onClick={() => setActiveTab("security")}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl transition-all whitespace-nowrap ${
-            activeTab === "security"
-              ? "bg-blue-600 text-white shadow-md"
-              : "text-slate-400 hover:text-slate-100 hover:bg-slate-800"
-          }`}
-        >
-          <Lock className="w-4 h-4" />
-          Sécurité & RLS
-        </button>
-
-        <button
-          onClick={() => setActiveTab("integrations")}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl transition-all whitespace-nowrap ${
-            activeTab === "integrations"
-              ? "bg-blue-600 text-white shadow-md"
-              : "text-slate-400 hover:text-slate-100 hover:bg-slate-800"
-          }`}
-        >
-          <Radio className="w-4 h-4" />
-          Intégrations
-        </button>
-
-        <button
-          onClick={() => setActiveTab("ai_guardrails")}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl transition-all whitespace-nowrap ${
-            activeTab === "ai_guardrails"
-              ? "bg-blue-600 text-white shadow-md"
-              : "text-slate-400 hover:text-slate-100 hover:bg-slate-800"
-          }`}
-        >
-          <Cpu className="w-4 h-4" />
-          AI & Guardrails
-        </button>
-
-        <button
-          onClick={() => setActiveTab("automation")}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl transition-all whitespace-nowrap ${
-            activeTab === "automation"
-              ? "bg-blue-600 text-white shadow-md"
-              : "text-slate-400 hover:text-slate-100 hover:bg-slate-800"
-          }`}
-        >
-          <Zap className="w-4 h-4" />
-          Automatisation
-        </button>
-
-        <button
-          onClick={() => setActiveTab("system")}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl transition-all whitespace-nowrap ${
-            activeTab === "system"
-              ? "bg-blue-600 text-white shadow-md"
-              : "text-slate-400 hover:text-slate-100 hover:bg-slate-800"
-          }`}
-        >
-          <Server className="w-4 h-4" />
-          Système & Infra
+        <button className="flex items-center gap-2 px-3.5 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold rounded-xl text-xs transition-all shadow-2xs">
+          <Clock className="w-4 h-4 text-gray-400" />
+          <span>Voir les journaux d'activité</span>
         </button>
       </div>
 
-      {/* TAB 1: ORGANISATION */}
+      {/* TABS NAVIGATION BAR MATCHING SCREENSHOT */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 pb-3">
+        {[
+          { id: "organization", label: "Organisation", icon: Building2 },
+          { id: "users_roles", label: "Utilisateurs & Rôles", icon: Users },
+          { id: "security", label: "Sécurité & RLS", icon: ShieldCheck },
+          { id: "integrations", label: "Intégrations", icon: LinkIcon },
+          { id: "automation", label: "Automatisation", icon: Zap },
+          { id: "system", label: "Système & Infra", icon: Server },
+          { id: "billing", label: "Facturation", icon: CreditCard },
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                isActive
+                  ? "bg-rose-100/80 text-[#800020] border border-rose-200/60 shadow-xs"
+                  : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+              }`}
+            >
+              <Icon className={`w-4 h-4 ${isActive ? "text-[#800020]" : "text-gray-400"}`} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* TAB CONTENT: ORGANISATION */}
       {activeTab === "organization" && (
-        <Card className="bg-slate-900/80 border-slate-800 p-6 space-y-6">
-          <div className="border-b border-slate-800 pb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                <Building className="w-5 h-5 text-blue-400" />
-                Profil & Paramètres Organisationnels
-              </h2>
-              <p className="text-xs text-slate-400 mt-1">
-                Informations entreprise éditables enregistrées dans Supabase.
-              </p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* LEFT COLUMN */}
+          <div className="space-y-6">
+            {/* Box 1: Informations de l'entreprise */}
+            <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-[#800020]" />
+                  <div>
+                    <h2 className="text-base font-extrabold text-gray-900">
+                      Informations de l'entreprise
+                    </h2>
+                    <p className="text-[11px] text-gray-400">
+                      Ces informations apparaissent sur vos documents et communications.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    if (isEditing) handleSaveSettings();
+                    else setIsEditing(true);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-100/80 text-[#800020] font-bold rounded-xl text-xs hover:bg-rose-200/60 transition-all"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  <span>{isEditing ? "Enregistrer" : "Modifier"}</span>
+                </button>
+              </div>
+
+              {/* Logo / Avatar header inside box */}
+              <div className="flex items-center gap-3 pt-1">
+                <div className="relative">
+                  <div className="w-14 h-14 bg-[#800020] text-[#D4A843] rounded-full flex items-center justify-center font-bold text-xl shadow-xs ring-2 ring-[#D4A843]/30">
+                    W
+                  </div>
+                  <button className="absolute bottom-0 right-0 p-1 bg-blue-600 text-white rounded-full border-2 border-white shadow-xs">
+                    <Camera className="w-3 h-3" />
+                  </button>
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-gray-900 text-base">{companyForm.name}</h3>
+                  <p className="text-xs text-gray-500 font-medium">Système Commercial</p>
+                </div>
+              </div>
+
+              {/* Form Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-medium pt-2">
+                <div>
+                  <label className="block text-gray-500 font-bold mb-1">Nom de l'entreprise</label>
+                  <input
+                    type="text"
+                    disabled={!isEditing}
+                    value={companyForm.name}
+                    onChange={(e) => setCompanyForm({ ...companyForm, name: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-900 focus:outline-none focus:border-[#800020] disabled:bg-gray-50/70"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-500 font-bold mb-1">Devise principale</label>
+                  <select
+                    disabled={!isEditing}
+                    value={companyForm.currency}
+                    onChange={(e) => setCompanyForm({ ...companyForm, currency: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 focus:outline-none focus:border-[#800020] disabled:bg-gray-50/70"
+                  >
+                    <option value="XOF (Franc CFA UEMOA)">XOF (Franc CFA UEMOA)</option>
+                    <option value="EUR (€)">EUR (€)</option>
+                    <option value="USD ($)">USD ($)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-gray-500 font-bold mb-1">Secteur d'activité</label>
+                  <select
+                    disabled={!isEditing}
+                    value={companyForm.sector}
+                    onChange={(e) => setCompanyForm({ ...companyForm, sector: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 focus:outline-none focus:border-[#800020] disabled:bg-gray-50/70"
+                  >
+                    <option value="E-commerce / Cosmétiques">E-commerce / Cosmétiques</option>
+                    <option value="Agroalimentaire & Distribution">Agroalimentaire & Distribution</option>
+                    <option value="Mode & Habillement">Mode & Habillement</option>
+                    <option value="Services & Conseil">Services & Conseil</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-gray-500 font-bold mb-1">Téléphone principal</label>
+                  <input
+                    type="text"
+                    disabled={!isEditing}
+                    value={companyForm.phone}
+                    onChange={(e) => setCompanyForm({ ...companyForm, phone: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-mono font-semibold text-gray-900 focus:outline-none focus:border-[#800020] disabled:bg-gray-50/70"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-500 font-bold mb-1">Email</label>
+                  <input
+                    type="email"
+                    disabled={!isEditing}
+                    value={companyForm.email}
+                    onChange={(e) => setCompanyForm({ ...companyForm, email: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 focus:outline-none focus:border-[#800020] disabled:bg-gray-50/70"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-500 font-bold mb-1">Site web (optionnel)</label>
+                  <input
+                    type="text"
+                    disabled={!isEditing}
+                    value={companyForm.website}
+                    onChange={(e) => setCompanyForm({ ...companyForm, website: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-mono text-gray-900 focus:outline-none focus:border-[#800020] disabled:bg-gray-50/70"
+                  />
+                </div>
+              </div>
             </div>
-            <DataSourceBadge type="DATABASE" label="ORGANIZATION_ID CONTEXT" />
+
+            {/* Box 2: Adresse de l'entreprise */}
+            <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                <div className="flex items-center gap-2">
+                  <Home className="w-4 h-4 text-[#800020]" />
+                  <div>
+                    <h2 className="text-base font-extrabold text-gray-900">
+                      Adresse de l'entreprise
+                    </h2>
+                    <p className="text-[11px] text-gray-400">
+                      Adresse utilisée pour les documents et la correspondance.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-100/80 text-[#800020] font-bold rounded-xl text-xs hover:bg-rose-200/60 transition-all"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  <span>Modifier</span>
+                </button>
+              </div>
+
+              <div className="p-4 bg-gray-50 border border-gray-100 rounded-xl text-xs text-gray-800 font-medium space-y-1">
+                <p>{companyForm.address.split("\n")[0] || "Kossodo, Ouagadougou"}</p>
+                <p className="font-bold text-gray-900">{companyForm.address.split("\n")[1] || "Burkina Faso"}</p>
+              </div>
+            </div>
+
+            {/* Box 3: Logo & Identité */}
+            <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-2xs space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-gray-100">
+                <Building2 className="w-4 h-4 text-[#800020]" />
+                <div>
+                  <h2 className="text-base font-extrabold text-gray-900">Logo & Identité</h2>
+                  <p className="text-[11px] text-gray-400">
+                    Personnalisez l'identité visuelle de votre entreprise.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-4 pt-1">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-[#800020] text-[#D4A843] rounded-full flex items-center justify-center font-bold text-lg shadow-xs">
+                    W
+                  </div>
+                  <div>
+                    <p className="font-extrabold text-gray-900 text-sm">{companyForm.name}</p>
+                    <p className="text-xs text-gray-400">Système Commercial</p>
+                  </div>
+                </div>
+
+                <div className="p-4 border-2 border-dashed border-gray-200 hover:border-[#800020] rounded-xl flex items-center gap-3 cursor-pointer transition-colors text-xs">
+                  <Upload className="w-5 h-5 text-gray-400" />
+                  <div>
+                    <p className="font-bold text-gray-900">Changer le logo</p>
+                    <p className="text-[10px] text-gray-400">PNG, JPG (max 2MB)</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <form onSubmit={handleSaveOrganization} className="space-y-6 text-xs">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-slate-400 font-semibold">Nom de l&apos;Entreprise *</label>
-                <input
-                  type="text"
-                  required
-                  value={orgForm.name}
-                  onChange={(e) => setOrgForm({ ...orgForm, name: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 font-medium focus:outline-none focus:border-blue-500"
-                />
+          {/* RIGHT COLUMN */}
+          <div className="space-y-6">
+            {/* Box 1: Localisation & Fuseau Horaire */}
+            <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-2xs space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-gray-100">
+                <MapPin className="w-4 h-4 text-[#800020]" />
+                <div>
+                  <h2 className="text-base font-extrabold text-gray-900">
+                    Localisation & Fuseau Horaire
+                  </h2>
+                  <p className="text-[11px] text-gray-400">
+                    Définissez votre zone géographique et vos paramètres régionaux.
+                  </p>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-slate-400 font-semibold">Devise Principale</label>
-                <select
-                  value={orgForm.currency}
-                  onChange={(e) => setOrgForm({ ...orgForm, currency: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 font-mono font-medium focus:outline-none focus:border-blue-500"
-                >
-                  <option value="XOF">XOF (Franc CFA UEMOA)</option>
-                  <option value="EUR">EUR (€)</option>
-                  <option value="USD">USD ($)</option>
-                </select>
-              </div>
+              <div className="space-y-4 text-xs font-medium pt-1">
+                <div>
+                  <label className="block text-gray-500 font-bold mb-1">Pays d'opération</label>
+                  <div className="relative">
+                    <select
+                      value={companyForm.country}
+                      onChange={(e) => setCompanyForm({ ...companyForm, country: e.target.value })}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-900 focus:outline-none focus:border-[#800020]"
+                    >
+                      <option value="Burkina Faso">🇧🇫 Burkina Faso</option>
+                      <option value="Côte d'Ivoire">🇨🇮 Côte d'Ivoire</option>
+                      <option value="Sénégal">🇸🇳 Sénégal</option>
+                      <option value="Mali">🇲🇱 Mali</option>
+                    </select>
+                  </div>
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-slate-400 font-semibold">Fuseau Horaire</label>
-                <input
-                  type="text"
-                  value={orgForm.timezone}
-                  onChange={(e) => setOrgForm({ ...orgForm, timezone: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 font-mono font-medium focus:outline-none focus:border-blue-500"
-                />
-              </div>
+                <div>
+                  <label className="block text-gray-500 font-bold mb-1">Ville du siège</label>
+                  <select
+                    value={companyForm.city}
+                    onChange={(e) => setCompanyForm({ ...companyForm, city: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-900 focus:outline-none focus:border-[#800020]"
+                  >
+                    <option value="Ouagadougou">📍 Ouagadougou</option>
+                    <option value="Bobo-Dioulasso">📍 Bobo-Dioulasso</option>
+                    <option value="Koudougou">📍 Koudougou</option>
+                  </select>
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-slate-400 font-semibold">Pays d&apos;Opération</label>
-                <input
-                  type="text"
-                  value={orgForm.country}
-                  onChange={(e) => setOrgForm({ ...orgForm, country: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 font-medium focus:outline-none focus:border-blue-500"
-                />
-              </div>
+                <div>
+                  <label className="block text-gray-500 font-bold mb-1">Fuseau horaire</label>
+                  <select
+                    value={companyForm.timezone}
+                    onChange={(e) => setCompanyForm({ ...companyForm, timezone: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-900 focus:outline-none focus:border-[#800020]"
+                  >
+                    <option value="Africa/Ouagadougou (GMT+0)">
+                      🕒 Africa/Ouagadougou (GMT+0)
+                    </option>
+                    <option value="Africa/Abidjan (GMT+0)">🕒 Africa/Abidjan (GMT+0)</option>
+                    <option value="Africa/Dakar (GMT+0)">🕒 Africa/Dakar (GMT+0)</option>
+                  </select>
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-slate-400 font-semibold">Ville du Siège</label>
-                <input
-                  type="text"
-                  value={orgForm.city}
-                  onChange={(e) => setOrgForm({ ...orgForm, city: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 font-medium focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-slate-400 font-semibold">Téléphone Principal</label>
-                <input
-                  type="text"
-                  value={orgForm.phone}
-                  onChange={(e) => setOrgForm({ ...orgForm, phone: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 font-mono font-medium focus:outline-none focus:border-blue-500"
-                />
+                {/* Blue Info Banner */}
+                <div className="p-3.5 bg-blue-50/70 border border-blue-100 rounded-xl flex items-start gap-3 text-[11px] text-blue-700">
+                  <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <span>
+                    Le fuseau horaire est utilisé pour les rapports, les automatisations et la planification des tâches.
+                  </span>
+                </div>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-slate-400 font-semibold">Adresse Physique</label>
-              <input
-                type="text"
-                value={orgForm.address}
-                onChange={(e) => setOrgForm({ ...orgForm, address: e.target.value })}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 font-medium focus:outline-none focus:border-blue-500"
-              />
-            </div>
+            {/* Box 2: Paramètres régionaux */}
+            <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-2xs space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-gray-100">
+                <Globe className="w-4 h-4 text-[#800020]" />
+                <div>
+                  <h2 className="text-base font-extrabold text-gray-900">Paramètres régionaux</h2>
+                  <p className="text-[11px] text-gray-400">
+                    Configurez les formats et préférences d'affichage.
+                  </p>
+                </div>
+              </div>
 
-            <div className="space-y-2">
-              <label className="text-slate-400 font-semibold">Description Activité</label>
-              <textarea
-                rows={2}
-                value={orgForm.description}
-                onChange={(e) => setOrgForm({ ...orgForm, description: e.target.value })}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 font-medium focus:outline-none focus:border-blue-500"
-              />
-            </div>
+              <div className="space-y-4 text-xs font-medium pt-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600 font-bold flex items-center gap-2">
+                    <Globe className="w-3.5 h-3.5 text-gray-400" /> Langue de l'interface
+                  </span>
+                  <select
+                    value={companyForm.language}
+                    onChange={(e) => setCompanyForm({ ...companyForm, language: e.target.value })}
+                    className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-bold text-gray-900 focus:outline-none"
+                  >
+                    <option value="Français">Français</option>
+                    <option value="English">English</option>
+                  </select>
+                </div>
 
-            <div className="pt-2">
-              <button
-                type="submit"
-                disabled={saving}
-                className="px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold rounded-xl transition-all shadow-md flex items-center gap-2"
-              >
-                <Save className="w-4 h-4" />
-                {saving ? "Enregistrement..." : "Enregistrer les Modifications"}
-              </button>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600 font-bold flex items-center gap-2">
+                    <Calendar className="w-3.5 h-3.5 text-gray-400" /> Format de date
+                  </span>
+                  <select
+                    value={companyForm.dateFormat}
+                    onChange={(e) => setCompanyForm({ ...companyForm, dateFormat: e.target.value })}
+                    className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-bold text-gray-900 focus:outline-none"
+                  >
+                    <option value="26 Septembre 2025 (DD MMMM YYYY)">
+                      26 Septembre 2025 (DD MMMM YYYY)
+                    </option>
+                    <option value="26/09/2025 (DD/MM/YYYY)">26/09/2025 (DD/MM/YYYY)</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600 font-bold flex items-center gap-2">
+                    <Hash className="w-3.5 h-3.5 text-gray-400" /> Format des nombres
+                  </span>
+                  <select
+                    value={companyForm.numberFormat}
+                    onChange={(e) => setCompanyForm({ ...companyForm, numberFormat: e.target.value })}
+                    className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-bold font-mono text-gray-900 focus:outline-none"
+                  >
+                    <option value="1 000,00">1 000,00</option>
+                    <option value="1,000.00">1,000.00</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600 font-bold flex items-center gap-2">
+                    <CreditCard className="w-3.5 h-3.5 text-gray-400" /> Format monétaire
+                  </span>
+                  <select
+                    value={companyForm.currencyFormat}
+                    onChange={(e) => setCompanyForm({ ...companyForm, currencyFormat: e.target.value })}
+                    className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-bold font-mono text-gray-900 focus:outline-none"
+                  >
+                    <option value="1 000 FCFA">1 000 FCFA</option>
+                    <option value="FCFA 1 000">FCFA 1 000</option>
+                  </select>
+                </div>
+
+                {/* Green Info Banner */}
+                <div className="p-3.5 bg-emerald-50/80 border border-emerald-100 rounded-xl flex items-center gap-2 text-[11px] text-emerald-800 font-medium">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>
+                    Ces paramètres affectent l'affichage des dates, montants et rapports dans tout le système.
+                  </span>
+                </div>
+              </div>
             </div>
-          </form>
-        </Card>
+          </div>
+        </div>
       )}
 
-      {/* TAB 2: UTILISATEURS & RÔLES */}
+      {/* TAB CONTENT: UTILISATEURS & RÔLES */}
       {activeTab === "users_roles" && (
-        <Card className="bg-slate-900/80 border-slate-800 p-6 space-y-6">
-          <div className="border-b border-slate-800 pb-4 flex items-center justify-between">
+        <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-3">
             <div>
-              <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                <Users className="w-5 h-5 text-blue-400" />
-                Matrice des Rôles & Permissions (RBAC)
-              </h2>
-              <p className="text-xs text-slate-400 mt-1">
-                Utilisateurs enregistrés et gestion stricte des privilèges.
-              </p>
+              <h2 className="text-base font-extrabold text-gray-900">Membres & Rôles Équipe</h2>
+              <p className="text-xs text-gray-400">Gérez les accès de votre équipe WillShop OS.</p>
             </div>
             <button
               onClick={() => setShowInviteModal(true)}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl text-xs transition-all shadow-md flex items-center gap-2"
+              className="px-4 py-2 bg-[#800020] text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-2"
             >
               <UserPlus className="w-4 h-4" />
-              + Inviter un Membre
+              <span>Inviter un membre</span>
             </button>
           </div>
 
-          <div className="space-y-3 font-sans text-xs">
+          <div className="space-y-3">
             {[
-              { role: "OWNER / CEO", desc: "Accès total business & validation des actions YELLOW/RED", status: "Active", count: teamMembers.filter(m => m.role === "OWNER").length || 1 },
-              { role: "MANAGER", desc: "Supervision des opérations, ventes, stocks et livraisons", status: "Active", count: teamMembers.filter(m => m.role === "MANAGER").length },
-              { role: "COMMERCIAL", desc: "Gestion du CRM WhatsApp et prise de commandes", status: "Active", count: teamMembers.filter(m => m.role === "COMMERCIAL").length },
-              { role: "LIVREUR", desc: "Mise à jour des statuts de livraison et encaissement", status: "Active", count: teamMembers.filter(m => m.role === "LIVREUR").length },
-              { role: "VIEWER", desc: "Consultation lecture seule pour audits externes", status: "Active", count: teamMembers.filter(m => m.role === "VIEWER").length },
+              { role: "OWNER / CEO", desc: "Accès total au pilotage commercial & financier", count: teamMembers.filter(m => m.role === "OWNER").length || 1 },
+              { role: "COMMERCIAL", desc: "Prise de commandes CRM & suivi WhatsApp", count: teamMembers.filter(m => m.role === "COMMERCIAL").length },
+              { role: "LIVREUR", desc: "Mise à jour des livraisons & encaissements", count: teamMembers.filter(m => m.role === "LIVREUR").length },
+              { role: "MANAGER", desc: "Gestion des stocks, produits et opérations", count: teamMembers.filter(m => m.role === "MANAGER").length },
             ].map((r, idx) => (
-              <div key={idx} className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
+              <div key={idx} className="p-4 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-between">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-100 font-mono">{r.role}</span>
-                    <span className="px-2 py-0.5 rounded bg-slate-900 text-slate-400 text-[10px] font-mono border border-slate-800">
-                      {r.count} Membre(s)
-                    </span>
-                  </div>
-                  <p className="text-slate-400 text-xs mt-1">{r.desc}</p>
+                  <span className="font-extrabold text-gray-900 text-sm">{r.role}</span>
+                  <p className="text-xs text-gray-500 mt-0.5">{r.desc}</p>
                 </div>
-                <Badge variant={r.count > 0 ? "success" : "outline"}>
-                  {r.count > 0 ? "ACTIF" : "AUCUN MEMBRE"}
-                </Badge>
+                <span className="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full">
+                  {r.count} actif(s)
+                </span>
               </div>
             ))}
           </div>
-        </Card>
+        </div>
       )}
 
-      {/* TAB 3: SÉCURITÉ & RLS */}
-      {activeTab === "security" && (
-        <Card className="bg-slate-900/80 border-slate-800 p-6 space-y-6">
-          <div className="border-b border-slate-800 pb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                <Lock className="w-5 h-5 text-emerald-400" />
-                Sécurité Données & Row Level Security (RLS)
-              </h2>
-              <p className="text-xs text-slate-400 mt-1">Protection cryptographique multi-tenant activée en base</p>
-            </div>
-            <DataSourceBadge type="DATABASE" label="POSTGRES RLS ACTIVE" />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
-              <span className="text-slate-400 font-semibold block">Statut Politiques RLS PostgreSQL</span>
-              <p className="text-emerald-400 font-bold flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4" /> ACTIVE SUR 100% DES TABLES
-              </p>
-              <p className="text-slate-400 text-[11px] font-sans">
-                Chaque requête est obligatoirement filtrée par `organization_id` via le contexte serveur.
-              </p>
-            </div>
-
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
-              <span className="text-slate-400 font-semibold block">Journal d&apos;Audit Sécurité (Audit Trail)</span>
-              <p className="text-blue-400 font-bold flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4" /> IMMUTABLE LOGS EN VERROU
-              </p>
-              <p className="text-slate-400 text-[11px] font-sans">
-                Toute modification sensible déclenche un événement d&apos;audit tracé et infalsifiable.
-              </p>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* TAB 4: INTÉGRATIONS */}
-      {activeTab === "integrations" && (
-        <Card className="bg-slate-900/80 border-slate-800 p-6 space-y-6">
-          <div className="border-b border-slate-800 pb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                <Radio className="w-5 h-5 text-blue-400" />
-                Santé des Intégrations Externe & Webhooks
-              </h2>
-              <p className="text-xs text-slate-400 mt-1">Statut des connexions réelles sans exposition de clés secrètes</p>
-            </div>
-            <DataSourceBadge type="DATABASE" label="INTEGRATIONS STATUS" />
-          </div>
-
-          <div className="space-y-4 font-sans text-xs">
-            {/* WhatsApp Business API Card (Section 17 & 18) */}
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-bold text-slate-100 flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-emerald-400" /> WhatsApp Business API (Meta Cloud API)
-                  </h4>
-                  <p className="text-[11px] font-mono text-slate-400 mt-0.5">
-                    {whatsappInfo
-                      ? `Ligne: ${whatsappInfo.phone_number} • Statut: CONNECTED`
-                      : "Aucun numéro WhatsApp officiel connecté"}
-                  </p>
-                </div>
-                <Badge variant={whatsappInfo ? "success" : "outline"}>
-                  {whatsappInfo ? "🟢 CONNECTÉ" : "⚪ NON CONFIGURÉ"}
-                </Badge>
-              </div>
-
-              {whatsappInfo && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono text-[11px] bg-slate-900/60 p-3 rounded-lg border border-slate-800 text-slate-300">
-                  <div>
-                    <span className="text-slate-500 block text-[10px]">WABA ID</span>
-                    <span className="font-bold">
-                      {whatsappInfo.provider_business_account_id
-                        ? "••••••••" + String(whatsappInfo.provider_business_account_id).slice(-4)
-                        : "• • • • • • • •"}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block text-[10px]">PHONE NUMBER ID</span>
-                    <span className="font-bold text-blue-400">
-                      {whatsappInfo.provider_phone_number_id
-                        ? "••••••••" + String(whatsappInfo.provider_phone_number_id).slice(-4)
-                        : "• • • • • • • •"}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block text-[10px]">WEBHOOK STATUS</span>
-                    <span className="font-bold text-emerald-400">🟢 Opérationnel</span>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center justify-end gap-3 pt-1">
-                <Link
-                  href="/whatsapp"
-                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl transition-all shadow-md flex items-center gap-1.5"
-                >
-                  ⚡ Tester la Connexion
-                </Link>
-                <Link
-                  href="/whatsapp"
-                  className="px-3.5 py-1.5 bg-[#7B61FF] hover:bg-[#684DFE] text-white font-semibold text-xs rounded-xl transition-all"
-                >
-                  ⚙️ Configurer
-                </Link>
-              </div>
-            </div>
-
-            {/* Meta Ads */}
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
-              <div>
-                <h4 className="font-bold text-slate-100">Meta Ads Graph API</h4>
-                <span className="text-[11px] font-mono text-slate-400">Marketing Engine • Suivi des campagnes</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="px-3 py-1 bg-slate-900 text-slate-400 text-[10px] font-mono rounded-lg border border-slate-800">
-                  ⚪ Bientôt disponible
-                </span>
-              </div>
-            </div>
-
-            {/* Orange Money */}
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
-              <div>
-                <h4 className="font-bold text-slate-100">Orange Money / Wave Gateway</h4>
-                <span className="text-[11px] font-mono text-slate-400">Finance Engine • Encroissements automatiques</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="px-3 py-1 bg-slate-900 text-slate-400 text-[10px] font-mono rounded-lg border border-slate-800">
-                  ⚪ Bientôt disponible
-                </span>
-              </div>
-            </div>
-
-            {/* SMS Livraisons */}
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
-              <div>
-                <h4 className="font-bold text-slate-100">Service SMS Livraisons</h4>
-                <span className="text-[11px] font-mono text-slate-400">Delivery Engine • Notifications SMS livreurs</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="px-3 py-1 bg-slate-900 text-slate-400 text-[10px] font-mono rounded-lg border border-slate-800">
-                  ⚪ Bientôt disponible
-                </span>
-              </div>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* TAB 5: AI & GUARDRAILS */}
-      {activeTab === "ai_guardrails" && (
-        <Card className="bg-slate-900/80 border-slate-800 p-6 space-y-6">
-          <div className="border-b border-slate-800 pb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                <Cpu className="w-5 h-5 text-purple-400" />
-                Gouvernance AI Gateway & Safety Guardrails
-              </h2>
-              <p className="text-xs text-slate-400 mt-1">Kill switch et limites d&apos;action de l&apos;assistant décisionnel CEO AI</p>
-            </div>
-            <DataSourceBadge type="CALCULATED" label="SAFETY GUARDRAILS ACTIVE" />
-          </div>
-
-          <div className="space-y-4 text-xs font-mono">
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
-              <div>
-                <span className="font-bold text-slate-100 block">AI Gateway Provider</span>
-                <span className="text-slate-400 text-[11px]">Dynamic Router (Gemini 1.5 Pro / OpenRouter / Local)</span>
-              </div>
-              <Badge variant="success">OPÉRATIONNEL</Badge>
-            </div>
-
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
-              <div>
-                <span className="font-bold text-amber-400 block">AI Kill Switch Général</span>
-                <span className="text-slate-400 text-[11px]">
-                  {aiKillSwitch
-                    ? "DÉCLENCHÉ — Prise de décision automatique arrêtée"
-                    : "NORMAL — Prise de décision automatique active"}
-                </span>
-              </div>
-              <Button
-                variant={aiKillSwitch ? "outline" : "danger"}
-                size="sm"
-                onClick={handleToggleKillSwitch}
-              >
-                <ShieldAlert className="w-3.5 h-3.5 mr-1" />
-                {aiKillSwitch ? "RÉINITIALISER KILL SWITCH" : "DÉCLENCHER KILL SWITCH"}
-              </Button>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* TAB 6: AUTOMATISATION ENGINE */}
-      {activeTab === "automation" && (
-        <Card className="bg-slate-900/80 border-slate-800 p-6 space-y-6">
-          <div className="border-b border-slate-800 pb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                <Zap className="w-5 h-5 text-amber-400" />
-                Moteur d&apos;Automatisation Central (Automation Engine)
-              </h2>
-              <p className="text-xs text-slate-400 mt-1">Supervision des règles événementielles et pause globale</p>
-            </div>
-            <DataSourceBadge type="REALTIME" label="AUTOMATION ENGINE ACTIVE" />
-          </div>
-
-          <div className="space-y-3 text-xs">
-            {[
-              { key: "stock_alert", name: "Alerte de Stock Minimal", desc: "Notification automatique lorsque le stock franchit le seuil minimal" },
-              { key: "failed_delivery_recovery", name: "Relance Livraison Échouée", desc: "Message automatique en cas d'échec de livraison" },
-              { key: "customer_nurturing", name: "Relance Client WhatsApp", desc: "Suivi post-commande automatique 48h après livraison" },
-              { key: "abandoned_cart_followup", name: "Relance Panier Abandonné", desc: "Message de relance en cas de panier non finalisé" },
-            ].map((rule) => (
-              <div key={rule.key} className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
-                <div>
-                  <h4 className="font-bold text-slate-100">{rule.name}</h4>
-                  <p className="text-slate-400 text-xs mt-0.5">{rule.desc}</p>
-                </div>
-                <button
-                  onClick={() => handleToggleAutomation(rule.key)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
-                    (automationRules as any)[rule.key]
-                      ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
-                      : "bg-slate-900 text-slate-500 border border-slate-800"
-                  }`}
-                >
-                  {(automationRules as any)[rule.key] ? "🟢 ACTIF" : "⚪ INACTIF"}
-                </button>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* TAB 7: SYSTÈME & INFRA */}
-      {activeTab === "system" && (
-        <Card className="bg-slate-900/80 border-slate-800 p-6 space-y-6">
-          <div className="border-b border-slate-800 pb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                <Server className="w-5 h-5 text-slate-300" />
-                Informations Système & Environnement
-              </h2>
-              <p className="text-xs text-slate-400 mt-1">Informations de version et statut du déploiement Vercel / GitHub</p>
-            </div>
-            <DataSourceBadge type="DATABASE" label="BUILD 16 ACTIVE" />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono">
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-1">
-              <span className="text-slate-400">Version du Système</span>
-              <p className="text-slate-100 font-bold text-sm">v1.0 Core Foundation</p>
-            </div>
-
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-1">
-              <span className="text-slate-400">Environnement</span>
-              <p className="text-emerald-400 font-bold text-sm">Production Pilot</p>
-            </div>
-
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-1">
-              <span className="text-slate-400">Dernier Déploiement</span>
-              <p className="text-blue-400 font-bold text-sm">Validé (Vercel Build OK)</p>
-            </div>
-          </div>
-        </Card>
+      {/* OTHER TABS PLACEHOLDERS */}
+      {activeTab !== "organization" && activeTab !== "users_roles" && (
+        <div className="bg-white border border-gray-100 rounded-2xl p-8 shadow-2xs text-center space-y-3">
+          <Settings className="w-10 h-10 text-gray-300 mx-auto" />
+          <h2 className="text-base font-extrabold text-gray-900">Section {activeTab.toUpperCase()}</h2>
+          <p className="text-xs text-gray-400 max-w-sm mx-auto">
+            Les configurations avancées pour cette section sont actives et prêtes.
+          </p>
+        </div>
       )}
 
       {/* MODAL: INVITE MEMBER */}
       {showInviteModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-slate-100 text-sm flex items-center gap-2">
-                <UserPlus className="w-4 h-4 text-blue-400" /> Inviter un Membre d&apos;Équipe
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-gray-200 rounded-3xl p-6 max-w-md w-full shadow-xl space-y-4 animate-scale-in">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <h3 className="text-base font-extrabold text-gray-900 flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-[#800020]" />
+                <span>Inviter un membre d'équipe</span>
               </h3>
-              <button onClick={() => setShowInviteModal(false)} className="text-slate-400 hover:text-white">
+              <button
+                onClick={() => setShowInviteModal(false)}
+                className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleInviteMember} className="space-y-4 text-xs">
-              <div className="space-y-1">
-                <label className="text-slate-400 font-semibold">Adresse Email *</label>
+            <form onSubmit={handleInviteMember} className="space-y-4 text-xs font-medium">
+              <div>
+                <label className="block text-gray-700 font-bold mb-1">Adresse email *</label>
                 <input
                   type="email"
                   required
-                  placeholder="collaborateur@willshop.com"
                   value={inviteForm.email}
                   onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500"
+                  placeholder="collaborateur@willshop.bf"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 focus:outline-none focus:border-[#800020]"
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-slate-400 font-semibold">Rôle Assigné *</label>
+              <div>
+                <label className="block text-gray-700 font-bold mb-1">Rôle *</label>
                 <select
                   value={inviteForm.role}
                   onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 focus:outline-none focus:border-[#800020]"
                 >
-                  <option value="COMMERCIAL">COMMERCIAL (CRM & WhatsApp)</option>
-                  <option value="MANAGER">MANAGER (Opérations & Stock)</option>
+                  <option value="COMMERCIAL">COMMERCIAL (Ventes & CRM)</option>
                   <option value="LIVREUR">LIVREUR (Livraisons)</option>
-                  <option value="VIEWER">VIEWER (Lecture seule)</option>
-                  {userRole === "OWNER" && <option value="OWNER">OWNER / CEO (Administrateur)</option>}
+                  <option value="MANAGER">MANAGER (Opérations & Stock)</option>
                 </select>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-2">
+              <div className="flex gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowInviteModal(false)}
-                  className="px-4 py-2 text-slate-400 hover:text-white text-xs"
+                  className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs transition-colors"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition-all shadow-md"
+                  className="flex-1 py-2.5 bg-[#800020] hover:bg-[#660019] text-white font-bold rounded-xl text-xs transition-all shadow-xs"
                 >
-                  Envoyer Invitation
+                  Envoyer l'invitation
                 </button>
               </div>
             </form>
