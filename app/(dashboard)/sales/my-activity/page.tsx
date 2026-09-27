@@ -12,17 +12,19 @@ import {
   Calendar,
   RefreshCw,
   Award,
+  Users,
 } from "lucide-react";
 
 export default function MyActivityPage() {
   const [loading, setLoading] = useState<boolean>(true);
-  const [commercialName, setCommercialName] = useState<string>("Awa");
+  const [commercialName, setCommercialName] = useState<string>("Commercial");
   const [stats, setStats] = useState({
-    actionsToday: 12,
-    conversationsHandled: 18,
-    followupsSent: 7,
-    ordersCompleted: 4,
-    revenueGenerated: 95000,
+    actionsToday: 0,
+    conversationsHandled: 0,
+    followupsSent: 0,
+    ordersCompleted: 0,
+    revenueGenerated: 0,
+    customersTotal: 0,
   });
 
   const loadActivityData = async () => {
@@ -53,18 +55,36 @@ export default function MyActivityPage() {
         if (roles && roles.length > 0) {
           const orgId = roles[0].organization_id;
 
+          // Fetch orders
           const { data: orders } = await supabase
             .from("orders")
             .select("total_amount")
             .eq("organization_id", orgId)
             .is("deleted_at", null);
 
+          // Fetch conversations
+          const { count: convCount } = await supabase
+            .from("whatsapp_conversations")
+            .select("*", { count: "exact", head: true })
+            .eq("organization_id", orgId);
+
+          // Fetch customers
+          const { count: custCount } = await supabase
+            .from("customers")
+            .select("*", { count: "exact", head: true })
+            .eq("organization_id", orgId)
+            .is("deleted_at", null);
+
           const totalRev = (orders || []).reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
-          setStats((prev) => ({
-            ...prev,
-            ordersCompleted: orders?.length || 4,
-            revenueGenerated: totalRev || 95000,
-          }));
+          
+          setStats({
+            actionsToday: (orders?.length || 0) + (convCount || 0),
+            conversationsHandled: convCount || 0,
+            followupsSent: 0,
+            ordersCompleted: orders?.length || 0,
+            revenueGenerated: totalRev || 0,
+            customersTotal: custCount || 0,
+          });
         }
       }
     } catch (err) {
@@ -81,95 +101,93 @@ export default function MyActivityPage() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto animate-fade-in-up pb-12">
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-[#181824] pb-6">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 text-emerald-400">
-              <Zap className="w-8 h-8" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-3">
-                📊 Mon Activité Commerciale
-              </h1>
-              <p className="text-sm text-gray-400 mt-1">
-                Synthèse lisible de vos accomplissements et performances opérationnelles.
-              </p>
-            </div>
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-gray-200 pb-6">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-[#800020]/10 rounded-2xl border border-[#800020]/20 text-[#800020]">
+            <Zap className="w-8 h-8" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-extrabold tracking-tight text-gray-900 flex items-center gap-3">
+              Mon Activité Commerciale
+            </h1>
+            <p className="text-xs text-gray-500 mt-1 font-medium">
+              Synthèse en temps réel de vos accomplissements et performances opérationnelles.
+            </p>
           </div>
         </div>
 
         <button
           onClick={loadActivityData}
-          className="flex items-center gap-2 px-4 py-2 bg-[#12121A] hover:bg-[#181824] border border-[#242436] text-gray-300 rounded-xl text-sm transition-all"
+          className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all shadow-2xs"
         >
-          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-[#7B61FF]" : ""}`} />
+          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-[#800020]" : ""}`} />
           Actualiser
         </button>
       </div>
 
       {/* TODAY ACCOMPLISHMENTS GRID */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-[#12121A] border border-emerald-500/30 p-5 rounded-3xl space-y-2 shadow-xl">
-          <span className="text-xs font-mono text-emerald-400 block uppercase">ACTIONS RÉALISÉES</span>
-          <span className="text-3xl font-bold text-white">{stats.actionsToday}</span>
-          <p className="text-[11px] text-gray-400">Aujourd&apos;hui</p>
+        <div className="bg-white border border-gray-200 p-5 rounded-2xl space-y-2 shadow-2xs">
+          <span className="text-[10px] font-mono text-gray-400 block uppercase font-bold">Actions Réalisées</span>
+          <span className="text-3xl font-extrabold text-gray-900">{stats.actionsToday}</span>
+          <p className="text-[11px] text-gray-500">Activités enregistrées</p>
         </div>
 
-        <div className="bg-[#12121A] border border-[#7B61FF]/30 p-5 rounded-3xl space-y-2 shadow-xl">
-          <span className="text-xs font-mono text-[#7B61FF] block uppercase">CONVERSATIONS TRAITÉES</span>
-          <span className="text-3xl font-bold text-white">{stats.conversationsHandled}</span>
-          <p className="text-[11px] text-gray-400">Interactions qualifiées</p>
+        <div className="bg-white border border-gray-200 p-5 rounded-2xl space-y-2 shadow-2xs">
+          <span className="text-[10px] font-mono text-gray-400 block uppercase font-bold">Conversations Traitées</span>
+          <span className="text-3xl font-extrabold text-gray-900">{stats.conversationsHandled}</span>
+          <p className="text-[11px] text-gray-500">Interactions WhatsApp</p>
         </div>
 
-        <div className="bg-[#12121A] border border-amber-500/30 p-5 rounded-3xl space-y-2 shadow-xl">
-          <span className="text-xs font-mono text-amber-300 block uppercase">COMMANDES CONCLUES</span>
-          <span className="text-3xl font-bold text-white">{stats.ordersCompleted}</span>
-          <p className="text-[11px] text-gray-400">Ventes générées</p>
+        <div className="bg-white border border-gray-200 p-5 rounded-2xl space-y-2 shadow-2xs">
+          <span className="text-[10px] font-mono text-gray-400 block uppercase font-bold">Commandes Conclues</span>
+          <span className="text-3xl font-extrabold text-[#800020]">{stats.ordersCompleted}</span>
+          <p className="text-[11px] text-gray-500">Ventes enregistrées</p>
         </div>
 
-        <div className="bg-[#12121A] border border-blue-500/30 p-5 rounded-3xl space-y-2 shadow-xl">
-          <span className="text-xs font-mono text-blue-300 block uppercase">CHIFFRE D&apos;AFFAIRES</span>
-          <span className="text-3xl font-bold text-white">{stats.revenueGenerated.toLocaleString("fr-FR")} XOF</span>
-          <p className="text-[11px] text-gray-400">Valeur totale conclue</p>
+        <div className="bg-white border border-gray-200 p-5 rounded-2xl space-y-2 shadow-2xs">
+          <span className="text-[10px] font-mono text-gray-400 block uppercase font-bold">Chiffre d'Affaires</span>
+          <span className="text-2xl font-extrabold text-gray-900">{stats.revenueGenerated.toLocaleString("fr-FR")} FCFA</span>
+          <p className="text-[11px] text-gray-500">Valeur totale conclue</p>
         </div>
       </div>
 
-      {/* WEEKLY BREAKDOWN */}
-      <div className="bg-[#12121A] border border-[#181824] rounded-3xl p-6 space-y-4 shadow-xl">
-        <h3 className="text-lg font-bold text-white flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-[#7B61FF]" />
-          Activité de la Semaine
+      {/* SUMMARY CARD */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-4 shadow-2xs">
+        <h3 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-[#800020]" />
+          Vue d'ensemble de l'activité
         </h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-3 font-mono text-xs">
-          <div className="bg-[#0A0A14] border border-[#242436] p-4 rounded-2xl space-y-1">
-            <span className="text-gray-400 font-bold block">Lundi</span>
-            <span className="text-xl font-bold text-white">14 actions</span>
-            <span className="text-[10px] text-emerald-400 block">3 commandes</span>
+        {stats.actionsToday === 0 && stats.ordersCompleted === 0 ? (
+          <div className="p-8 text-center border border-dashed border-gray-200 rounded-xl bg-gray-50 space-y-2">
+            <Award className="w-8 h-8 text-gray-300 mx-auto" />
+            <p className="text-xs font-bold text-gray-700">Aucune activité enregistrée aujourd'hui</p>
+            <p className="text-[11px] text-gray-500 max-w-sm mx-auto">
+              Les actions, conversations et commandes traitées s'afficheront ici au fur et à mesure.
+            </p>
           </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 font-mono text-xs">
+            <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl space-y-1">
+              <span className="text-gray-500 font-bold block">Clients Actifs</span>
+              <span className="text-xl font-bold text-gray-900">{stats.customersTotal} clients</span>
+              <span className="text-[10px] text-gray-400 block">Base CRM</span>
+            </div>
 
-          <div className="bg-[#0A0A14] border border-[#242436] p-4 rounded-2xl space-y-1">
-            <span className="text-gray-400 font-bold block">Mardi</span>
-            <span className="text-xl font-bold text-white">18 actions</span>
-            <span className="text-[10px] text-emerald-400 block">5 commandes</span>
-          </div>
+            <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl space-y-1">
+              <span className="text-gray-500 font-bold block">Conversations</span>
+              <span className="text-xl font-bold text-gray-900">{stats.conversationsHandled}</span>
+              <span className="text-[10px] text-gray-400 block">WhatsApp Sync</span>
+            </div>
 
-          <div className="bg-[#0A0A14] border border-[#7B61FF]/40 p-4 rounded-2xl space-y-1 bg-[#7B61FF]/10">
-            <span className="text-[#7B61FF] font-bold block">Mercredi (Aujourd&apos;hui)</span>
-            <span className="text-xl font-bold text-white">{stats.actionsToday} actions</span>
-            <span className="text-[10px] text-emerald-400 block">{stats.ordersCompleted} commandes</span>
+            <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl space-y-1">
+              <span className="text-gray-500 font-bold block">Commandes Totales</span>
+              <span className="text-xl font-bold text-[#800020]">{stats.ordersCompleted}</span>
+              <span className="text-[10px] text-gray-400 block">Chiffre d'Affaires : {stats.revenueGenerated.toLocaleString("fr-FR")} FCFA</span>
+            </div>
           </div>
-
-          <div className="bg-[#0A0A14] border border-[#242436] p-4 rounded-2xl space-y-1 opacity-60">
-            <span className="text-gray-500 font-bold block">Jeudi</span>
-            <span className="text-xl font-bold text-gray-400">—</span>
-          </div>
-
-          <div className="bg-[#0A0A14] border border-[#242436] p-4 rounded-2xl space-y-1 opacity-60">
-            <span className="text-gray-500 font-bold block">Vendredi</span>
-            <span className="text-xl font-bold text-gray-400">—</span>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
