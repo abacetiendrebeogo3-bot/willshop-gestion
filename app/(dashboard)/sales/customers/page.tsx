@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/src/infrastructure/supabase/client";
@@ -272,9 +274,23 @@ export default function CustomersCRMPage() {
         {/* Customer Cards List (Left 66%) */}
         <div className="lg:col-span-2 space-y-3">
           {filteredCustomers.length === 0 ? (
-            <div className="p-8 text-center bg-white rounded-2xl border border-gray-200 space-y-2">
-              <Users className="w-8 h-8 text-gray-400 mx-auto" />
-              <p className="text-xs font-bold text-gray-700">Aucun client trouvé.</p>
+            <div className="p-12 text-center bg-white rounded-2xl border border-dashed border-gray-200 space-y-3 shadow-2xs">
+              <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto border border-gray-100 text-gray-400">
+                <Users className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-bold text-gray-900">Aucun client enregistré</p>
+                <p className="text-xs text-gray-400 max-w-sm mx-auto">
+                  Votre base CRM ne contient encore aucun client. Ajoutez votre premier client pour commencer à suivre ses commandes et échanges.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="px-4 py-2 bg-[#800020] text-white text-xs font-bold rounded-xl shadow-xs hover:bg-[#660019] transition-all inline-flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Nouveau client</span>
+              </button>
             </div>
           ) : (
             filteredCustomers.map((cust) => (

@@ -92,96 +92,6 @@ export default function DeliveryManagementPage() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // Demo Fallback Data matching Pixel Perfect UI layout
-  const DEMO_DELIVERIES: DeliveryRow[] = [
-    {
-      id: "del-1",
-      orderNumber: "CMD-00125",
-      orderTime: "10:24",
-      customerName: "Awa Koné",
-      customerPhone: "+226 70 12 34 56",
-      customerInitials: "AK",
-      avatarBg: "bg-pink-100 text-pink-700",
-      productName: "Riz 5kg x 2",
-      productPrice: "12 500 XOF",
-      zone: "Ouaga 2000",
-      status: "PENDING",
-    },
-    {
-      id: "del-2",
-      orderNumber: "CMD-00124",
-      orderTime: "09:40",
-      customerName: "Moussa Traoré",
-      customerPhone: "+226 76 45 22 11",
-      customerInitials: "MT",
-      avatarBg: "bg-amber-100 text-amber-700",
-      productName: "Huile x 2",
-      productPrice: "8 000 XOF",
-      zone: "Zone 1",
-      status: "IN_TRANSIT",
-      driverName: "Ibrahim",
-      driverPhone: "+226 70 98 76 54",
-    },
-    {
-      id: "del-3",
-      orderNumber: "CMD-00123",
-      orderTime: "08:15",
-      customerName: "Fatou Diarra",
-      customerPhone: "+226 78 33 44 55",
-      customerInitials: "FD",
-      avatarBg: "bg-blue-100 text-blue-700",
-      productName: "Thé Minceur",
-      productPrice: "6 500 XOF",
-      zone: "Karpala",
-      status: "DELIVERED",
-      driverName: "Issa",
-      driverPhone: "+226 71 22 33 44",
-    },
-    {
-      id: "del-4",
-      orderNumber: "CMD-00122",
-      orderTime: "Hier 18:20",
-      customerName: "Ibrahim Sanogo",
-      customerPhone: "+226 77 11 22 33",
-      customerInitials: "IB",
-      avatarBg: "bg-purple-100 text-purple-700",
-      productName: "Green Mask x 1",
-      productPrice: "3 500 XOF",
-      zone: "Pissy",
-      status: "DELIVERED",
-      driverName: "Salif",
-      driverPhone: "+226 74 55 66 77",
-    },
-    {
-      id: "del-5",
-      orderNumber: "CMD-00121",
-      orderTime: "Hier 16:45",
-      customerName: "Sofia Compaoré",
-      customerPhone: "+226 70 66 77 88",
-      customerInitials: "SC",
-      avatarBg: "bg-yellow-100 text-yellow-700",
-      productName: "Capsules x 1",
-      productPrice: "4 500 XOF",
-      zone: "Patte d'Oie",
-      status: "PROBLEM",
-    },
-    {
-      id: "del-6",
-      orderNumber: "CMD-00120",
-      orderTime: "Hier 14:10",
-      customerName: "Yacine K.",
-      customerPhone: "+226 75 99 00 11",
-      customerInitials: "YK",
-      avatarBg: "bg-rose-100 text-rose-700",
-      productName: "Maxman Gel",
-      productPrice: "5 000 XOF",
-      zone: "Boulmiougou",
-      status: "IN_TRANSIT",
-      driverName: "Adama",
-      driverPhone: "+226 72 11 44 55",
-    },
-  ];
-
   // Load Real Deliveries and Drivers from Supabase
   const loadDeliveryData = async () => {
     setLoading(true);
@@ -192,7 +102,7 @@ export default function DeliveryManagementPage() {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        setDeliveries(DEMO_DELIVERIES);
+        setDeliveries([]);
         setLoading(false);
         return;
       }
@@ -204,7 +114,7 @@ export default function DeliveryManagementPage() {
         .is("deleted_at", null);
 
       if (!roles || roles.length === 0) {
-        setDeliveries(DEMO_DELIVERIES);
+        setDeliveries([]);
         setLoading(false);
         return;
       }
@@ -250,7 +160,7 @@ export default function DeliveryManagementPage() {
         });
         setDeliveries(formatted);
       } else {
-        setDeliveries(DEMO_DELIVERIES);
+        setDeliveries([]);
       }
 
       // 2. Fetch Active Drivers for Organization
@@ -263,7 +173,7 @@ export default function DeliveryManagementPage() {
       setDrivers(drvs || []);
     } catch (err) {
       console.error("[Delivery Load Error]", err);
-      setDeliveries(DEMO_DELIVERIES);
+      setDeliveries([]);
     } finally {
       setLoading(false);
     }
