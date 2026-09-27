@@ -29,7 +29,8 @@ import {
   ChevronRight,
   Ban,
   Play,
-  RotateCcw
+  RotateCcw,
+  Trash2
 } from "lucide-react";
 
 export default function TeamCockpitPage() {
@@ -143,6 +144,39 @@ export default function TeamCockpitPage() {
       setEditError(err?.message || "Erreur lors de la mise à jour des informations.");
     } finally {
       setIsSubmittingEdit(false);
+    }
+  }
+
+  // Delete Employee State & Handler
+  const [deletingEmployee, setDeletingEmployee] = useState<any>(null);
+  const [showDeleteEmpModal, setShowDeleteEmpModal] = useState(false);
+
+  async function handleDeleteEmployee() {
+    if (!deletingEmployee || !orgId) return;
+    try {
+      const supabase = createClient();
+      await supabase
+        .from("team_employees")
+        .update({
+          deleted_at: new Date().toISOString(),
+          employment_status: "INACTIVE",
+        })
+        .eq("organization_id", orgId)
+        .eq("id", deletingEmployee.id);
+
+      if (deletingEmployee.user_id) {
+        await supabase
+          .from("user_organization_roles")
+          .update({ deleted_at: new Date().toISOString() })
+          .eq("user_id", deletingEmployee.user_id)
+          .eq("organization_id", orgId);
+      }
+
+      setShowDeleteEmpModal(false);
+      setDeletingEmployee(null);
+      await loadTeamData();
+    } catch (err) {
+      console.error("Erreur suppression employé:", err);
     }
   }
 
@@ -624,6 +658,16 @@ export default function TeamCockpitPage() {
                           className="flex-1 py-2 bg-[#800020]/10 hover:bg-[#800020]/20 text-[#800020] text-xs font-bold rounded-xl transition-all border border-[#800020]/20 flex items-center justify-center gap-1"
                         >
                           <span>Éditer</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setDeletingEmployee(emp);
+                            setShowDeleteEmpModal(true);
+                          }}
+                          className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all border border-rose-200 flex items-center justify-center"
+                          title="Supprimer le membre"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -1370,6 +1414,40 @@ export default function TeamCockpitPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: DELETE EMPLOYEE CONFIRMATION */}
+      {showDeleteEmpModal && deletingEmployee && (
+        <div className="fixed inset-0 z-50 bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-sm overflow-hidden shadow-xl animate-scale-in text-center p-6 space-y-4">
+            <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <h3 className="font-extrabold text-gray-900 text-base">Supprimer le membre d'équipe ?</h3>
+            <p className="text-xs text-gray-500">
+              Voulez-vous vraiment retirer <strong className="text-gray-900">{deletingEmployee.first_name} {deletingEmployee.last_name}</strong> de votre organisation ? Son accès sera révoqué.
+            </p>
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteEmpModal(false);
+                  setDeletingEmployee(null);
+                }}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl transition-all"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteEmployee}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl transition-all shadow-xs"
+              >
+                Confirmer la suppression
+              </button>
+            </div>
           </div>
         </div>
       )}

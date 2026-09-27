@@ -226,6 +226,49 @@ export default function CustomersCRMPage() {
     }
   };
 
+  const [showPurgeModal, setShowPurgeModal] = useState<boolean>(false);
+
+  const handlePurgeAllCustomers = async () => {
+    try {
+      const supabase = createClient();
+      let targetOrgId = orgId;
+      if (!targetOrgId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: roleData } = await supabase
+            .from("user_organization_roles")
+            .select("organization_id")
+            .eq("user_id", user.id)
+            .is("deleted_at", null)
+            .limit(1);
+          if (roleData && roleData.length > 0) targetOrgId = roleData[0].organization_id;
+        }
+      }
+
+      if (!targetOrgId) {
+        showToast("Erreur: Organisation introuvable.");
+        return;
+      }
+
+      const { error } = await supabase
+        .from("customers")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("organization_id", targetOrgId);
+
+      if (error) {
+        showToast(`Erreur de nettoyage: ${error.message}`);
+        return;
+      }
+
+      setCustomers([]);
+      setSelectedCustomer(null);
+      setShowPurgeModal(false);
+      showToast("🧹 Tous les clients fictifs ont été supprimés avec succès !");
+    } catch (err: any) {
+      showToast(`Erreur: ${err?.message || "Impossible de vider la base."}`);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16 animate-fade-in-up">
       {/* Toast */}
@@ -250,13 +293,25 @@ export default function CustomersCRMPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="bg-[#800020] hover:bg-[#660019] text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Nouveau client</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {customers.length > 0 && (
+            <button
+              onClick={() => setShowPurgeModal(true)}
+              className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+            >
+              <Trash2 className="w-4 h-4 text-rose-600" />
+              <span>Vider tous les clients</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="bg-[#800020] hover:bg-[#660019] text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Nouveau client</span>
+          </button>
+        </div>
       </div>
 
       {/* SEARCH AND FILTERS */}
@@ -525,6 +580,35 @@ export default function CustomersCRMPage() {
                 className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-xs"
               >
                 Confirmer la suppression
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PURGE ALL CUSTOMERS MODAL */}
+      {showPurgeModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 border border-gray-200 shadow-xl space-y-4 text-center">
+            <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <h3 className="font-extrabold text-gray-900 text-base">Vider tous les clients fictifs ?</h3>
+            <p className="text-xs text-gray-500">
+              Voulez-vous vraiment supprimer l'intégralité des clients de la liste ? Vous pourrez ensuite repartir d'une base 100% propre avec de vrais clients.
+            </p>
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                onClick={() => setShowPurgeModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-bold border border-gray-300 hover:bg-gray-100 text-gray-700"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handlePurgeAllCustomers}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-xs"
+              >
+                Tout vider
               </button>
             </div>
           </div>

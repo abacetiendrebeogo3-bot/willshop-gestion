@@ -94,25 +94,53 @@ export async function POST(request: NextRequest) {
 
     const orgName = org?.name || "WILLShop OS";
 
-    // 5. Insert/Update team_employees
-    const { data: emp, error: empErr } = await supabaseAdmin
+    // 5. Insert/Update team_employees with upsert & clear deleted_at
+    const cleanDigits = phoneClean.replace(/[^\d]/g, "");
+    const { data: existingEmp } = await supabaseAdmin
       .from("team_employees")
-      .insert({
-        organization_id: organizationId,
-        phone: phoneClean,
-        first_name: fName,
-        last_name: lName,
-        email: email ? email.trim() : null,
-        role: memberRole,
-        responsibilities: jobTitle ? [jobTitle.trim()] : [],
-        employment_status: "ACTIVE",
-        activity_status: "ONLINE",
-      })
-      .select()
-      .single();
+      .select("id")
+      .or(`phone.eq.${phoneClean},phone.eq.+${cleanDigits}`)
+      .limit(1)
+      .maybeSingle();
+
+    let empErr = null;
+    if (existingEmp) {
+      const { error: updErr } = await supabaseAdmin
+        .from("team_employees")
+        .update({
+          organization_id: organizationId,
+          first_name: fName,
+          last_name: lName,
+          email: email ? email.trim() : null,
+          role: memberRole,
+          responsibilities: jobTitle ? [jobTitle.trim()] : [],
+          employment_status: "ACTIVE",
+          activity_status: "ONLINE",
+          deleted_at: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existingEmp.id);
+      empErr = updErr;
+    } else {
+      const { error: insErr } = await supabaseAdmin
+        .from("team_employees")
+        .insert({
+          organization_id: organizationId,
+          phone: phoneClean,
+          first_name: fName,
+          last_name: lName,
+          email: email ? email.trim() : null,
+          role: memberRole,
+          responsibilities: jobTitle ? [jobTitle.trim()] : [],
+          employment_status: "ACTIVE",
+          activity_status: "ONLINE",
+          deleted_at: null,
+        });
+      empErr = insErr;
+    }
 
     if (empErr) {
-      console.warn("[Invite API] Insert employee warning:", empErr.message);
+      console.warn("[Invite API] Upsert employee warning:", empErr.message);
     }
 
     // 6. Build Invitation Text & App Login Link

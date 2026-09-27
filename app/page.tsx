@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
+import { createClient } from "@/src/infrastructure/supabase/client";
 import {
   Sparkles,
   ArrowRight,
@@ -17,6 +18,39 @@ import {
 } from "lucide-react";
 
 export default function LandingPage() {
+  useEffect(() => {
+    async function checkAuthAndRedirect() {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: roles } = await supabase
+            .from("user_organization_roles")
+            .select("role")
+            .eq("user_id", user.id)
+            .is("deleted_at", null)
+            .limit(1);
+
+          const userRole = roles && roles.length > 0 ? roles[0].role : "COMMERCIAL";
+          if (userRole === "COMMERCIAL" || userRole === "SALES") {
+            window.location.href = "/sales/my-day";
+          } else if (userRole === "LIVREUR" || userRole === "DRIVER") {
+            window.location.href = "/delivery/my-deliveries";
+          } else {
+            window.location.href = "/ceo";
+          }
+        } else {
+          // If launched as standalone PWA app on mobile phone
+          const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any)?.standalone;
+          if (isStandalone) {
+            window.location.href = "/login";
+          }
+        }
+      } catch (_e) {}
+    }
+    checkAuthAndRedirect();
+  }, []);
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-primary/20 selection:text-primary">
       {/* Top Navigation */}

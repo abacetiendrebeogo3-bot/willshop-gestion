@@ -55,6 +55,35 @@ export default function LoginPage() {
       }
     });
 
+    async function checkExistingSession() {
+      try {
+        const searchParams = new URLSearchParams(window.location.search);
+        if (searchParams.has("phone")) return;
+
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: roles } = await supabase
+            .from("user_organization_roles")
+            .select("role")
+            .eq("user_id", user.id)
+            .is("deleted_at", null)
+            .limit(1);
+
+          if (roles && roles.length > 0) {
+            const userRole = roles[0].role;
+            if (userRole === "COMMERCIAL" || userRole === "SALES") {
+              window.location.href = "/sales/my-day";
+            } else if (userRole === "LIVREUR" || userRole === "DRIVER") {
+              window.location.href = "/delivery/my-deliveries";
+            } else {
+              window.location.href = "/ceo";
+            }
+          }
+        }
+      } catch (_e) {}
+    }
+    checkExistingSession();
+
     return () => {
       authListener?.subscription?.unsubscribe();
     };
