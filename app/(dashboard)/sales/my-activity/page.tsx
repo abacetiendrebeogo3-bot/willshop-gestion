@@ -64,7 +64,7 @@ export default function MyActivityPage() {
 
           // Fetch conversations
           const { count: convCount } = await supabase
-            .from("whatsapp_conversations")
+            .from("conversations")
             .select("*", { count: "exact", head: true })
             .eq("organization_id", orgId);
 

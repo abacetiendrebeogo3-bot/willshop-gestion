@@ -123,42 +123,54 @@ export default function ConversationsCRMPage() {
       }
 
       const { data: convsData } = await supabase
-        .from("whatsapp_conversations")
-        .select("*")
+        .from("conversations")
+        .select(`
+          id,
+          unread_count,
+          last_message_at,
+          metadata,
+          customers (
+            first_name,
+            last_name,
+            phone
+          )
+        `)
         .eq("organization_id", orgId)
-        .order("updated_at", { ascending: false });
+        .order("last_message_at", { ascending: false });
 
       if (convsData && convsData.length > 0) {
         const formatted: ConversationItem[] = convsData.map((c: any) => {
-          const name = c.customer_name || c.phone_number || "Client WhatsApp";
+          const cust = Array.isArray(c.customers) ? c.customers[0] : c.customers;
+          const name = cust?.first_name ? `${cust.first_name} ${cust.last_name || ""}`.trim() : cust?.phone || "Client WhatsApp";
           const initials = name.substring(0, 2).toUpperCase();
+          const tagFromMeta = c.metadata?.tag || "EN_ATTENTE";
 
           let tagType: TagType = "ALL";
           let tagLabel = "Information";
           let tagStyle = "bg-stone-100 text-stone-700 border border-stone-200";
           let tagIcon: any = MessageSquare;
 
-          if (c.tag === "TRES_INTERESSES" || c.tag === "HOT_INTENT") {
+          if (tagFromMeta === "TRES_INTERESSES" || tagFromMeta === "HOT_INTENT") {
             tagType = "HOT_INTENT";
             tagLabel = "Très intéressé";
             tagStyle = "bg-rose-50 text-rose-700 border border-rose-200";
             tagIcon = Flame;
-          } else if (c.tag === "PRETS_A_COMMANDER" || c.tag === "READY_TO_ORDER") {
+          } else if (tagFromMeta === "PRETS_A_COMMANDER" || tagFromMeta === "READY_TO_ORDER") {
             tagType = "READY_TO_ORDER";
             tagLabel = "Prêt à commander";
             tagStyle = "bg-emerald-50 text-emerald-700 border border-emerald-200";
             tagIcon = CheckCircle2;
-          } else if (c.tag === "A_RELANCER" || c.tag === "TO_RELANCE") {
+          } else if (tagFromMeta === "A_RELANCER" || tagFromMeta === "TO_RELANCE") {
             tagType = "TO_RELANCE";
             tagLabel = "À relancer";
             tagStyle = "bg-emerald-50 text-emerald-700 border border-emerald-200";
             tagIcon = CheckCircle2;
-          } else if (c.tag === "SCEPTIQUES" || c.tag === "SKEPTICAL") {
+          } else if (tagFromMeta === "SCEPTIQUES" || tagFromMeta === "SKEPTICAL") {
             tagType = "SKEPTICAL";
             tagLabel = "Sceptique";
             tagStyle = "bg-purple-50 text-purple-700 border border-purple-200";
             tagIcon = HelpCircle;
-          } else if (c.tag === "EN_ATTENTE" || c.tag === "WAITING") {
+          } else if (tagFromMeta === "EN_ATTENTE" || tagFromMeta === "WAITING") {
             tagType = "WAITING";
             tagLabel = "En attente";
             tagStyle = "bg-amber-50 text-amber-700 border border-amber-200";
@@ -170,9 +182,9 @@ export default function ConversationsCRMPage() {
             customerName: name,
             avatarBg: "bg-[#800020]/10 text-[#800020]",
             avatarText: initials,
-            phone: c.phone_number || "",
-            lastMessage: c.last_message || "Aucun message récent",
-            time: c.updated_at ? new Date(c.updated_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "",
+            phone: cust?.phone || "",
+            lastMessage: c.metadata?.last_message || "Aucun message récent",
+            time: c.last_message_at ? new Date(c.last_message_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "",
             tag: tagType,
             tagLabel,
             tagStyle,

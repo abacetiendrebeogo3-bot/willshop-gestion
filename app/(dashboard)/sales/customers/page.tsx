@@ -144,13 +144,7 @@ export default function CustomersCRMPage() {
   // A customer is considered a "ghost" if their name is purely derived from the phone number
   // (auto-created by WhatsApp webhook with no human name provided)
   const isGhostCustomer = (c: CustomerRecord) => {
-    const name = c.name.trim();
-    // Ghost patterns: just a number, "Client XXXX", or "WhatsApp" appended variations
-    if (/^\+?\d[\d\s\-]+$/.test(name)) return true;
-    if (/^Client\s+\d+$/i.test(name)) return true;
-    if (/^Client\s+WhatsApp$/i.test(name)) return true;
-    if (name === "Client WhatsApp" || name === "Client Sans Nom") return true;
-    if (name.toLowerCase().endsWith(" whatsapp") && name.split(" ").length <= 2) return true;
+    // Return false to always show auto-created customers
     return false;
   };
 
