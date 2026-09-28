@@ -15,7 +15,7 @@ export function PwaInstallPrompt() {
 
     // 1. Check if running in standalone mode (already installed & opened from home screen)
     const isInStandaloneMode =
-      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
       (window.navigator as any).standalone === true ||
       document.referrer.includes("android-app://");
 

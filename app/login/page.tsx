@@ -72,11 +72,11 @@ export default function LoginPage() {
           if (roles && roles.length > 0) {
             const userRole = roles[0].role;
             if (userRole === "COMMERCIAL" || userRole === "SALES") {
-              window.location.href = "/sales/my-day";
+              router.replace("/sales/my-day");
             } else if (userRole === "LIVREUR" || userRole === "DRIVER") {
-              window.location.href = "/delivery/my-deliveries";
+              router.replace("/delivery/my-deliveries");
             } else {
-              window.location.href = "/ceo";
+              router.replace("/ceo");
             }
           }
         }
@@ -196,13 +196,13 @@ export default function LoginPage() {
             document.cookie = `willshop_role=${userRole}; path=/; max-age=${86400 * 7}; SameSite=Lax`;
 
             if (userRole === "COMMERCIAL" || userRole === "SALES") {
-              window.location.href = "/sales/my-day";
+              router.replace("/sales/my-day");
               return;
             } else if (userRole === "LIVREUR" || userRole === "DRIVER") {
-              window.location.href = "/delivery/my-deliveries";
+              router.replace("/delivery/my-deliveries");
               return;
             } else {
-              window.location.href = "/ceo";
+              router.replace("/ceo");
               return;
             }
           }
@@ -211,7 +211,7 @@ export default function LoginPage() {
         }
       }
 
-      window.location.href = "/workspace-select";
+      router.replace("/workspace-select");
     } catch (_err: any) {
       setErrorMsg(_err?.message || "Erreur de connexion.");
       setIsLoading(false);
@@ -274,7 +274,7 @@ export default function LoginPage() {
       } else {
         setSuccessMsg("Votre mot de passe a été mis à jour avec succès ! Redirection en cours...");
         setTimeout(() => {
-          window.location.href = "/workspace-select";
+          router.replace("/workspace-select");
         }, 1500);
       }
     } catch (err: any) {

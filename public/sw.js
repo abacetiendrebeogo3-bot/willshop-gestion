@@ -7,7 +7,6 @@
 const CACHE_NAME = 'willshop-pwa-v1';
 
 const STATIC_ASSETS = [
-  '/',
   '/offline',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
@@ -18,10 +17,17 @@ const STATIC_ASSETS = [
 // Install Event — Pre-cache static shell assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS).catch((err) => {
-        console.warn('[SW Install] Some static assets failed to cache:', err);
-      });
+    caches.open(CACHE_NAME).then(async (cache) => {
+      for (const asset of STATIC_ASSETS) {
+        try {
+          const response = await fetch(asset);
+          if (response.ok) {
+            await cache.put(asset, response);
+          }
+        } catch (err) {
+          console.warn(`[SW Install] Failed to cache ${asset}:`, err);
+        }
+      }
     })
   );
   self.skipWaiting();

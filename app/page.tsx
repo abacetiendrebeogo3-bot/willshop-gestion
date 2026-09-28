@@ -41,7 +41,7 @@ export default function LandingPage() {
           }
         } else {
           // If launched as standalone PWA app on mobile phone
-          const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any)?.standalone;
+          const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || (window.navigator as any)?.standalone;
           if (isStandalone) {
             window.location.href = "/login";
           }
