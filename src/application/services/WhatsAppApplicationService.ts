@@ -465,8 +465,13 @@ export class WhatsAppApplicationService {
         if (retryCust) customerId = retryCust.id;
       }
     } else {
-      // Foreign number: log but don't create CRM record
-      console.info(`[WEBHOOK_GEO_GUARD] Foreign number ${normalizedPhone} — conversation stored, no CRM customer created.`);
+      // Foreign number: completely ignore and reject to avoid CRM clutter
+      console.info(`[WEBHOOK_GEO_GUARD] Foreign number ${normalizedPhone} ignored. No conversation created.`);
+      return {
+        status: 'IGNORED',
+        message: 'Foreign number ignored to avoid CRM clutter',
+        organizationId: targetOrgId,
+      };
     }
 
 
@@ -476,7 +481,7 @@ export class WhatsAppApplicationService {
 
     const { data: existingConvs } = await this.supabase
       .from('conversations')
-      .select('id, conversation_mode, assigned_agent, status, metadata')
+      .select('id, conversation_mode, assigned_agent, status, metadata, unread_count')
       .eq('organization_id', targetOrgId)
       .eq('customer_id', customerId)
       .neq('status', 'ARCHIVED')
@@ -495,9 +500,11 @@ export class WhatsAppApplicationService {
         ...(event.fromMe ? { last_human_activity_at: nowIso, last_commercial_message_at: nowIso } : { last_customer_message_at: nowIso }),
       };
 
+      const newUnreadCount = event.fromMe ? 0 : (existingConv.unread_count || 0) + 1;
+
       await this.supabase
         .from('conversations')
-        .update({ last_message_at: nowIso, status: 'OPEN', metadata: updatedMeta })
+        .update({ last_message_at: nowIso, status: 'OPEN', metadata: updatedMeta, unread_count: newUnreadCount })
         .eq('id', conversationId);
     } else {
       const initialMode = event.fromMe ? 'HUMAN_PRIMARY' : 'FOLLOWUP_ONLY';
@@ -514,6 +521,7 @@ export class WhatsAppApplicationService {
             conversation_mode: initialMode,
             assigned_agent: event.fromMe ? 'HUMAN' : 'SALES_AI',
             last_message_at: nowIso,
+            unread_count: event.fromMe ? 0 : 1,
             metadata: event.fromMe ? { last_human_activity_at: nowIso, last_commercial_message_at: nowIso } : { last_customer_message_at: nowIso },
           })
           .select()

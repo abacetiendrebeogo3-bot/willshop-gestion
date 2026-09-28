@@ -44,6 +44,7 @@ export default function CustomersCRMPage() {
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [customerConvId, setCustomerConvId] = useState<string | null>(null);
+  const [customerMessages, setCustomerMessages] = useState<any[]>([]);
   const [isLoadingConv, setIsLoadingConv] = useState<boolean>(false);
   // show ghost customers (auto-created from WhatsApp with no real name)
   const [showGhosts, setShowGhosts] = useState<boolean>(false);
@@ -253,6 +254,7 @@ export default function CustomersCRMPage() {
     if (!customerId) return;
     setIsLoadingConv(true);
     setCustomerConvId(null);
+    setCustomerMessages([]);
     try {
       const supabase = createClient();
       const { data } = await supabase
@@ -263,9 +265,20 @@ export default function CustomersCRMPage() {
         .order("last_message_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      setCustomerConvId(data?.id || null);
+
+      if (data?.id) {
+        setCustomerConvId(data.id);
+        const { data: msgs } = await supabase
+          .from("messages")
+          .select("*")
+          .eq("conversation_id", data.id)
+          .order("created_at", { ascending: true })
+          .limit(50);
+        setCustomerMessages(msgs || []);
+      }
     } catch {
       setCustomerConvId(null);
+      setCustomerMessages([]);
     } finally {
       setIsLoadingConv(false);
     }
@@ -517,18 +530,34 @@ export default function CustomersCRMPage() {
               </div>
 
               {/* Actions */}
-              <div className="pt-2 space-y-2">
+              <div className="pt-2 space-y-4">
                 {isLoadingConv ? (
-                  <div className="w-full py-2.5 text-xs text-center text-stone-400 font-bold">Chargement conversation...</div>
+                  <div className="w-full py-4 text-xs text-center text-stone-400 font-bold">Chargement de l'historique WhatsApp...</div>
                 ) : customerConvId ? (
-                  <Link
-                    href={`/whatsapp?conv=${customerConvId}`}
-                    className="w-full bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center justify-center gap-2"
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                    <span>Voir la conversation WhatsApp</span>
-                    <ExternalLink className="w-3.5 h-3.5 opacity-70" />
-                  </Link>
+                  <div className="border border-stone-200 rounded-xl overflow-hidden bg-stone-50 flex flex-col h-64">
+                    <div className="bg-[#800020]/10 px-3 py-2 border-b border-stone-200 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className="w-4 h-4 text-[#800020]" />
+                        <span className="text-xs font-bold text-[#800020]">Historique Récent</span>
+                      </div>
+                      <Link href={`/whatsapp?conv=${customerConvId}`} className="text-[10px] font-bold text-stone-500 hover:text-[#800020] flex items-center gap-1 transition-colors">
+                        Ouvrir complet <ExternalLink className="w-3 h-3" />
+                      </Link>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-3 space-y-3 flex flex-col">
+                      {customerMessages.map((msg, i) => (
+                        <div key={msg.id || i} className={`max-w-[85%] rounded-2xl p-2.5 text-xs ${msg.direction === 'OUTBOUND' ? 'bg-[#800020] text-white self-end rounded-tr-none' : 'bg-white border border-stone-200 text-stone-800 self-start rounded-tl-none shadow-xs'}`}>
+                          <p className="whitespace-pre-wrap">{msg.content || (msg.message_type === 'AUDIO' ? '🎤 Message Vocal' : '📎 Media')}</p>
+                          <span className={`block text-[9px] mt-1 text-right ${msg.direction === 'OUTBOUND' ? 'text-white/70' : 'text-stone-400'}`}>
+                            {new Date(msg.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      ))}
+                      {customerMessages.length === 0 && (
+                        <p className="text-center text-xs text-stone-400 my-auto">Aucun message dans cette conversation.</p>
+                      )}
+                    </div>
+                  </div>
                 ) : (
                   <div className="w-full py-2 text-[11px] text-center text-stone-400 bg-stone-50 rounded-xl border border-stone-100">
                     Aucune conversation WhatsApp trouvée

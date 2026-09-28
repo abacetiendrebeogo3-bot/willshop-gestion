@@ -26,8 +26,8 @@ export function PwaInstallPrompt() {
     const dismissedAt = localStorage.getItem("willshop_pwa_prompt_dismissed");
     if (dismissedAt) {
       const daysSinceDismiss = (Date.now() - parseInt(dismissedAt, 10)) / (1000 * 3600 * 24);
-      if (daysSinceDismiss < 3) {
-        return; // Don't show again within 3 days
+      if (daysSinceDismiss < 30) {
+        return; // Don't show again within 30 days
       }
     }
 

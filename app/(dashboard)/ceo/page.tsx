@@ -201,6 +201,20 @@ export default function CEOHomePage() {
             <Calendar className="w-4 h-4 text-[#800020]" />
             <span className="capitalize">{todayDateStr || "Aujourd'hui"}</span>
           </div>
+          {viewMode === "GUIDED_REVIEW" && (
+            <button
+              onClick={() => {
+                try {
+                  const todayKey = new Date().toISOString().slice(0, 10);
+                  localStorage.setItem("ceo_review_done", todayKey);
+                } catch (_) {}
+                setViewMode("EXECUTIVE_DASHBOARD");
+              }}
+              className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-50 border border-rose-200 hover:border-rose-300 text-rose-700 font-extrabold text-xs rounded-xl shadow-2xs transition-all"
+            >
+              <span>Passer pour aujourd'hui</span>
+            </button>
+          )}
         </div>
       </div>
 
