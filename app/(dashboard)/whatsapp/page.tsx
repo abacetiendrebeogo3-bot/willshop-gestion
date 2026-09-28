@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
 import { createClient } from "@/src/infrastructure/supabase/client";
 import {
   Search,
@@ -194,8 +193,15 @@ export default function ConversationsPage() {
   const assistantEndRef = useRef<HTMLDivElement>(null);
 
   // Read ?conv= URL param to auto-open a conversation (e.g. from CRM)
-  const searchParams = useSearchParams();
-  const convParamId = searchParams?.get("conv") || null;
+  // Using window.location.search instead of useSearchParams to avoid Suspense requirement
+  const [convParamId, setConvParamId] = useState<string | null>(null);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const conv = params.get("conv");
+      if (conv) setConvParamId(conv);
+    }
+  }, []);
 
   // Toast Notification helper
   const showToast = (msg: string) => {
