@@ -5,6 +5,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { SidebarProvider } from "@/src/context/SidebarContext";
 import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
 import { PwaInstallPrompt } from "@/components/pwa/PwaInstallPrompt";
+import { FloatingAIAssistant } from "@/components/ai/FloatingAIAssistant";
 
 export const viewport: Viewport = {
   themeColor: "#800020",
@@ -52,6 +53,7 @@ export default function RootLayout({
           </div>
           <ServiceWorkerRegister />
           <PwaInstallPrompt />
+          <FloatingAIAssistant />
         </SidebarProvider>
       </body>
     </html>
