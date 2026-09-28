@@ -167,25 +167,108 @@ export default function MyDeliveriesPage() {
     (d) => d.status === "DELIVERED" || d.status === "FAILED" || d.status === "RESCHEDULED"
   );
 
-  const handleMarkDelivered = (id: string) => {
-    setDeliveries((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, status: "DELIVERED" } : d))
-    );
-    showToast("🎉 Livraison confirmée comme LIVRÉE & Payée !");
+  const handleStartTransit = async (id: string) => {
+    try {
+      const res = await fetch("/api/delivery/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deliveryId: id, status: "IN_TRANSIT" }),
+      });
+      if (res.ok) {
+        setDeliveries((prev) =>
+          prev.map((d) => (d.id === id ? { ...d, status: "IN_TRANSIT" } : d))
+        );
+        showToast("🚀 Tournée démarrée ! Statut : EN TRANSIT");
+      } else {
+        showToast("Erreur lors de la mise en transit.");
+      }
+    } catch {
+      showToast("Erreur de connexion.");
+    }
   };
 
-  const handleConfirmFail = () => {
+  const handleMarkDelivered = async (id: string) => {
+    try {
+      const res = await fetch("/api/delivery/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deliveryId: id, status: "DELIVERED" }),
+      });
+      if (res.ok) {
+        setDeliveries((prev) =>
+          prev.map((d) => (d.id === id ? { ...d, status: "DELIVERED" } : d))
+        );
+        showToast("🎉 Livraison confirmée comme LIVRÉE & Payée !");
+      } else {
+        showToast("Erreur lors de la validation.");
+      }
+    } catch {
+      showToast("Erreur de connexion.");
+    }
+  };
+
+  const handleConfirmFail = async () => {
     if (!selectedDelivery) return;
-    setDeliveries((prev) =>
-      prev.map((d) =>
-        d.id === selectedDelivery.id
-          ? { ...d, status: "FAILED", failureReason: failReason }
-          : d
-      )
-    );
-    setShowFailModal(false);
-    setSelectedDelivery(null);
-    showToast("⚠️ Échec de livraison enregistré.");
+    try {
+      const res = await fetch("/api/delivery/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          deliveryId: selectedDelivery.id,
+          status: "FAILED",
+          failureReason: failReason,
+        }),
+      });
+      if (res.ok) {
+        setDeliveries((prev) =>
+          prev.map((d) =>
+            d.id === selectedDelivery.id
+              ? { ...d, status: "FAILED", failureReason: failReason }
+              : d
+          )
+        );
+        showToast("⚠️ Échec de livraison enregistré.");
+      } else {
+        showToast("Erreur lors de la déclaration d'échec.");
+      }
+    } catch {
+      showToast("Erreur de connexion.");
+    } finally {
+      setShowFailModal(false);
+      setSelectedDelivery(null);
+    }
+  };
+
+  const handleConfirmReschedule = async () => {
+    if (!selectedDelivery) return;
+    try {
+      const res = await fetch("/api/delivery/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          deliveryId: selectedDelivery.id,
+          status: "RESCHEDULED",
+          rescheduledDate: rescheduleDate,
+        }),
+      });
+      if (res.ok) {
+        setDeliveries((prev) =>
+          prev.map((d) =>
+            d.id === selectedDelivery.id
+              ? { ...d, status: "RESCHEDULED", failureReason: `Reprogrammé : ${rescheduleDate}` }
+              : d
+          )
+        );
+        showToast("📅 Livraison reprogrammée.");
+      } else {
+        showToast("Erreur lors de la reprogrammation.");
+      }
+    } catch {
+      showToast("Erreur de connexion.");
+    } finally {
+      setShowRescheduleModal(false);
+      setSelectedDelivery(null);
+    }
   };
 
   return (
