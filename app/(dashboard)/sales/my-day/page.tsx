@@ -23,9 +23,11 @@ import {
 } from "lucide-react";
 
 import { createClient } from "@/src/infrastructure/supabase/client";
+import { QuickOrderModal } from "@/components/sales/QuickOrderModal";
 
 interface FollowupTask {
   id: string;
+  customerId?: string;
   title: string;
   description: string;
   dueAt: string;
@@ -46,6 +48,10 @@ export default function CommercialHomePage() {
   const [convCount, setConvCount] = useState<number>(0);
   const [orderCount, setOrderCount] = useState<number>(0);
   const [todayDateStr, setTodayDateStr] = useState<string>("");
+
+  // Quick Order Modal State
+  const [showQuickOrderModal, setShowQuickOrderModal] = useState<boolean>(false);
+  const [orderModalCustomer, setOrderModalCustomer] = useState<any>(null);
 
   // Commercial Followup Queue State
   const [followupTasks, setFollowupTasks] = useState<FollowupTask[]>([]);
@@ -368,18 +374,37 @@ export default function CommercialHomePage() {
                 )}
               </div>
 
-              <button
-                onClick={() => handleSendFollowup(currentTask)}
-                disabled={isSendingFollowup || !editingMessage.trim()}
-                className="px-5 py-2.5 bg-[#800020] hover:bg-[#660019] text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-2 disabled:opacity-40"
-              >
-                {isSendingFollowup ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}
-                <span>Relancer maintenant</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOrderModalCustomer({
+                      id: currentTask.customerId || currentTask.id,
+                      name: currentTask.customerName,
+                      phone: currentTask.customerPhone,
+                      conversationId: currentTask.conversationId,
+                    });
+                    setShowQuickOrderModal(true);
+                  }}
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-1.5"
+                >
+                  <ShoppingCart className="w-4 h-4" />
+                  <span>Créer Commande 1-Clic</span>
+                </button>
+
+                <button
+                  onClick={() => handleSendFollowup(currentTask)}
+                  disabled={isSendingFollowup || !editingMessage.trim()}
+                  className="px-5 py-2.5 bg-[#800020] hover:bg-[#660019] text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-2 disabled:opacity-40"
+                >
+                  {isSendingFollowup ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                  <span>Relancer maintenant</span>
+                </button>
+              </div>
             </div>
           </div>
         ) : (
@@ -555,6 +580,19 @@ export default function CommercialHomePage() {
           </Link>
         </div>
       </div>
+
+      {/* Quick Order 1-Click Modal */}
+      {showQuickOrderModal && orderModalCustomer && (
+        <QuickOrderModal
+          isOpen={showQuickOrderModal}
+          onClose={() => setShowQuickOrderModal(false)}
+          initialCustomer={orderModalCustomer}
+          onOrderCreated={(data) => {
+            showToast(`✓ Commande ${data.orderNumber} créée avec succès !`);
+            loadData();
+          }}
+        />
+      )}
     </div>
   );
 }

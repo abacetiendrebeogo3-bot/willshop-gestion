@@ -33,9 +33,10 @@ export interface CEODirectionMetrics {
   yesterdayOrdersCount: number;
   todayRevenue: number;
   todayOrdersCount: number;
-  cashBalance: number;
-  orangeMoneyBalance: number;
-  moovMoneyBalance: number;
+  cashBalance: number | null;
+  orangeMoneyBalance: number | null;
+  moovMoneyBalance: number | null;
+  treasuryStatus: 'CONFIGURED' | 'NOT_CONFIGURED';
   activeTeamCount: number;
   onlineTeamCount: number;
   pendingDeliveriesCount: number;
@@ -125,9 +126,10 @@ export class RoutineEngineService {
       yesterdayOrdersCount: yesterdayCount,
       todayRevenue: todayRev,
       todayOrdersCount: todayCount,
-      cashBalance: Math.round(todayRev * 0.4),
-      orangeMoneyBalance: Math.round(todayRev * 0.4),
-      moovMoneyBalance: Math.round(todayRev * 0.2),
+      cashBalance: null,
+      orangeMoneyBalance: null,
+      moovMoneyBalance: null,
+      treasuryStatus: 'NOT_CONFIGURED',
       activeTeamCount,
       onlineTeamCount,
       pendingDeliveriesCount,

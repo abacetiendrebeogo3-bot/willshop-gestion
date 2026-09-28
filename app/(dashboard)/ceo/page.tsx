@@ -33,9 +33,10 @@ interface CEOMetrics {
   yesterdayOrdersCount: number;
   todayRevenue: number;
   todayOrdersCount: number;
-  cashBalance: number;
-  orangeMoneyBalance: number;
-  moovMoneyBalance: number;
+  cashBalance: number | null;
+  orangeMoneyBalance: number | null;
+  moovMoneyBalance: number | null;
+  treasuryStatus?: "CONFIGURED" | "NOT_CONFIGURED";
   activeTeamCount: number;
   onlineTeamCount: number;
   pendingDeliveriesCount: number;
@@ -68,9 +69,10 @@ export default function CEOHomePage() {
     yesterdayOrdersCount: 0,
     todayRevenue: 0,
     todayOrdersCount: 0,
-    cashBalance: 0,
-    orangeMoneyBalance: 0,
-    moovMoneyBalance: 0,
+    cashBalance: null,
+    orangeMoneyBalance: null,
+    moovMoneyBalance: null,
+    treasuryStatus: "NOT_CONFIGURED",
     activeTeamCount: 0,
     onlineTeamCount: 0,
     pendingDeliveriesCount: 0,
@@ -250,22 +252,41 @@ export default function CEOHomePage() {
 
                 {/* STEP 2: ARGENT */}
                 {currentStep.key === "ARGENT" && (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="bg-[#FAF8F5] p-5 rounded-2xl border border-[#EBE5DA] space-y-1">
-                      <span className="text-[11px] font-bold text-stone-500 uppercase">Caisse Espèces</span>
-                      <p className="text-2xl font-black text-emerald-700">{metrics.cashBalance.toLocaleString("fr-FR")} FCFA</p>
-                      <p className="text-xs text-stone-500 font-medium">Recettes physiques en caisse</p>
-                    </div>
-                    <div className="bg-[#FAF8F5] p-5 rounded-2xl border border-[#EBE5DA] space-y-1">
-                      <span className="text-[11px] font-bold text-stone-500 uppercase">Orange Money</span>
-                      <p className="text-2xl font-black text-amber-700">{metrics.orangeMoneyBalance.toLocaleString("fr-FR")} FCFA</p>
-                      <p className="text-xs text-stone-500 font-medium">Compte marchand OM</p>
-                    </div>
-                    <div className="bg-[#FAF8F5] p-5 rounded-2xl border border-[#EBE5DA] space-y-1">
-                      <span className="text-[11px] font-bold text-stone-500 uppercase">Moov Money</span>
-                      <p className="text-2xl font-black text-blue-700">{metrics.moovMoneyBalance.toLocaleString("fr-FR")} FCFA</p>
-                      <p className="text-xs text-stone-500 font-medium">Compte marchand Moov</p>
-                    </div>
+                  <div>
+                    {metrics.treasuryStatus === "NOT_CONFIGURED" || metrics.cashBalance === null ? (
+                      <div className="p-8 bg-[#FAF8F5] border border-[#EBE5DA] rounded-2xl text-center space-y-3">
+                        <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 border border-amber-300 flex items-center justify-center mx-auto">
+                          <Building2 className="w-6 h-6 text-amber-700" />
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="font-extrabold text-[#1F1917] text-sm">Données de trésorerie non configurées</h4>
+                          <p className="text-xs text-stone-500 max-w-md mx-auto">
+                            Les soldes de trésorerie (Caisse Espèces, Orange Money, Moov Money) ne sont pas encore reliés à un compte marchand en ligne. Le système n'estime ni n'invente aucune donnée financière.
+                          </p>
+                        </div>
+                        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold rounded-full">
+                          <span>MODULE TRÉSORERIE NON CONFIGURÉ</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="bg-[#FAF8F5] p-5 rounded-2xl border border-[#EBE5DA] space-y-1">
+                          <span className="text-[11px] font-bold text-stone-500 uppercase">Caisse Espèces</span>
+                          <p className="text-2xl font-black text-emerald-700">{metrics.cashBalance?.toLocaleString("fr-FR")} FCFA</p>
+                          <p className="text-xs text-stone-500 font-medium">Recettes physiques en caisse</p>
+                        </div>
+                        <div className="bg-[#FAF8F5] p-5 rounded-2xl border border-[#EBE5DA] space-y-1">
+                          <span className="text-[11px] font-bold text-stone-500 uppercase">Orange Money</span>
+                          <p className="text-2xl font-black text-amber-700">{metrics.orangeMoneyBalance?.toLocaleString("fr-FR")} FCFA</p>
+                          <p className="text-xs text-stone-500 font-medium">Compte marchand OM</p>
+                        </div>
+                        <div className="bg-[#FAF8F5] p-5 rounded-2xl border border-[#EBE5DA] space-y-1">
+                          <span className="text-[11px] font-bold text-stone-500 uppercase">Moov Money</span>
+                          <p className="text-2xl font-black text-blue-700">{metrics.moovMoneyBalance?.toLocaleString("fr-FR")} FCFA</p>
+                          <p className="text-xs text-stone-500 font-medium">Compte marchand Moov</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

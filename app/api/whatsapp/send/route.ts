@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
       console.error('Error inserting outbound message record:', msgInsertErr);
     }
 
-    // 8. Update conversation status to HUMAN_ACTIVE and last_message_at
+    // 8. Update conversation status to HUMAN_ACTIVE, last_message_at and last_engagement_at
     await supabaseAdmin
       .from('conversations')
       .update({
@@ -174,6 +174,28 @@ export async function POST(request: NextRequest) {
         last_message_at: new Date().toISOString(),
       })
       .eq('id', conversationId);
+
+    // Also update whatsapp_conversations if table exists
+    await supabaseAdmin
+      .from('whatsapp_conversations')
+      .update({
+        last_engagement_at: new Date().toISOString(),
+      })
+      .eq('id', conversationId);
+
+    // Auto-complete any PENDING customer_engagements for this customer
+    if (conversation.customer_id) {
+      await supabaseAdmin
+        .from('customer_engagements')
+        .update({
+          status: 'COMPLETED',
+          completed_at: new Date().toISOString(),
+          completed_by: user.id,
+        })
+        .eq('organization_id', organizationId)
+        .eq('customer_id', conversation.customer_id)
+        .eq('status', 'PENDING');
+    }
 
     return NextResponse.json({
       success: true,

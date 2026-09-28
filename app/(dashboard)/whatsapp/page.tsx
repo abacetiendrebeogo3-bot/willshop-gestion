@@ -21,7 +21,9 @@ import {
   UserPlus,
   QrCode,
   Phone,
+  ShoppingCart,
 } from "lucide-react";
+import { QuickOrderModal } from "@/components/sales/QuickOrderModal";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -125,6 +127,10 @@ export default function ConversationsPage() {
   const [memberName, setMemberName] = useState("");
   const [memberRole, setMemberRole] = useState("COMMERCIAL");
   const [isSubmittingMember, setIsSubmittingMember] = useState(false);
+
+  // Quick Order Modal State
+  const [showQuickOrderModal, setShowQuickOrderModal] = useState(false);
+  const [orderModalCustomer, setOrderModalCustomer] = useState<any>(null);
 
   const handleConnectInstance = async () => {
     setShowQrModal(true);
@@ -685,22 +691,45 @@ export default function ConversationsPage() {
         {showChat && selectedConv && (
           <div className="flex flex-col flex-1 overflow-hidden">
             {/* Conversation header info */}
-            <div className="px-4 pb-3 flex items-center gap-3 border-b border-[#EBE5DA] bg-[#FAF8F5]">
-              <div className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-sm ${selectedConv.avatarColor}`}>
-                {selectedConv.avatarInitials}
+            <div className="px-4 pb-3 flex items-center justify-between gap-3 border-b border-[#EBE5DA] bg-[#FAF8F5]">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-sm ${selectedConv.avatarColor}`}>
+                  {selectedConv.avatarInitials}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-[#1F1917] truncate">{selectedConv.customerName}</p>
+                  <p className="text-[11px] text-stone-500 truncate">{selectedConv.phoneNumber}</p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-stone-500 truncate">{selectedConv.phoneNumber}</p>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOrderModalCustomer({
+                      id: selectedConv.id,
+                      name: selectedConv.customerName,
+                      phone: selectedConv.phoneNumber,
+                      conversationId: selectedConv.id,
+                    });
+                    setShowQuickOrderModal(true);
+                  }}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1"
+                >
+                  <ShoppingCart className="w-3.5 h-3.5" />
+                  <span>+ Commande 1-Clic</span>
+                </button>
+
+                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                  selectedConv.tag === "A_RELANCER" ? "bg-[#800020]/8 text-[#800020] border-[#800020]/20" :
+                  selectedConv.tag === "TRES_INTERESSES" ? "bg-orange-50 text-orange-600 border-orange-200" :
+                  selectedConv.tag === "PRETS_A_COMMANDER" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                  selectedConv.tag === "EN_ATTENTE" ? "bg-amber-50 text-amber-600 border-amber-200" :
+                  "bg-stone-50 text-stone-500 border-stone-200"
+                }`}>
+                  {TAG_CONFIG[selectedConv.tag].label}
+                </span>
               </div>
-              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
-                selectedConv.tag === "A_RELANCER" ? "bg-[#800020]/8 text-[#800020] border-[#800020]/20" :
-                selectedConv.tag === "TRES_INTERESSES" ? "bg-orange-50 text-orange-600 border-orange-200" :
-                selectedConv.tag === "PRETS_A_COMMANDER" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                selectedConv.tag === "EN_ATTENTE" ? "bg-amber-50 text-amber-600 border-amber-200" :
-                "bg-stone-50 text-stone-500 border-stone-200"
-              }`}>
-                {TAG_CONFIG[selectedConv.tag].label}
-              </span>
             </div>
 
             {/* Messages */}
@@ -999,6 +1028,19 @@ export default function ConversationsPage() {
         <div
           className="fixed inset-0 z-20"
           onClick={() => { setShowPeriodDropdown(false); setShowHourDropdown(false); }}
+        />
+      )}
+
+      {/* Quick Order 1-Click Modal */}
+      {showQuickOrderModal && orderModalCustomer && (
+        <QuickOrderModal
+          isOpen={showQuickOrderModal}
+          onClose={() => setShowQuickOrderModal(false)}
+          initialCustomer={orderModalCustomer}
+          onOrderCreated={(data) => {
+            showToast(`✓ Commande ${data.orderNumber} créée avec succès !`);
+            loadConversations();
+          }}
         />
       )}
     </div>
