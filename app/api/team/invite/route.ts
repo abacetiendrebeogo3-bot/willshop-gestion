@@ -94,7 +94,12 @@ export async function POST(request: NextRequest) {
 
     const orgName = org?.name || "WILLShop OS";
 
-    // 5. Insert/Update team_employees with upsert & clear deleted_at
+    // 5. Generate secure cryptographically strong invitation_token valid for 72 hours
+    const crypto = require("crypto");
+    const invitationToken = `inv_${crypto.randomBytes(16).toString("hex")}`;
+    const invitationExpiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
+
+    // Insert/Update team_employees with upsert & clear deleted_at
     const cleanDigits = phoneClean.replace(/[^\d]/g, "");
     const { data: existingEmp } = await supabaseAdmin
       .from("team_employees")
@@ -116,6 +121,8 @@ export async function POST(request: NextRequest) {
           responsibilities: jobTitle ? [jobTitle.trim()] : [],
           employment_status: "ACTIVE",
           activity_status: "ONLINE",
+          invitation_token: invitationToken,
+          invitation_expires_at: invitationExpiresAt,
           deleted_at: null,
           updated_at: new Date().toISOString(),
         })
@@ -134,6 +141,8 @@ export async function POST(request: NextRequest) {
           responsibilities: jobTitle ? [jobTitle.trim()] : [],
           employment_status: "ACTIVE",
           activity_status: "ONLINE",
+          invitation_token: invitationToken,
+          invitation_expires_at: invitationExpiresAt,
           deleted_at: null,
         });
       empErr = insErr;
@@ -143,9 +152,9 @@ export async function POST(request: NextRequest) {
       console.warn("[Invite API] Upsert employee warning:", empErr.message);
     }
 
-    // 6. Build Invitation Text & App Login Link
+    // 6. Build Invitation Text & App Login Link with Token
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin || "https://willshop-gestion.vercel.app").replace(/\/+$/, '');
-    const inviteUrl = `${appUrl}/login?phone=${encodeURIComponent(phoneClean)}`;
+    const inviteUrl = `${appUrl}/login?phone=${encodeURIComponent(phoneClean)}&token=${invitationToken}`;
 
     const inviteText = `📲 *Invitation WILLShop OS*
 

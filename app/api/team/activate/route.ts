@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     });
 
     const body = await request.json();
-    const { phoneOrEmail, password } = body;
+    const { phoneOrEmail, password, token } = body;
 
     if (!phoneOrEmail || !phoneOrEmail.trim() || !password) {
       return NextResponse.json(
@@ -76,6 +76,23 @@ export async function POST(request: NextRequest) {
         { error: "Aucune invitation trouvée pour ce numéro de téléphone. Veuillez contacter l'administrateur." },
         { status: 404 }
       );
+    }
+
+    // 2. Security Check (Fix P1): Verify invitation_token if present on employee record
+    if (employee.invitation_token) {
+      if (!token || token.trim() !== employee.invitation_token) {
+        return NextResponse.json(
+          { error: "Jeton d'invitation manquant ou invalide. Veuillez utiliser le lien d'invitation reçu sur WhatsApp." },
+          { status: 403 }
+        );
+      }
+
+      if (employee.invitation_expires_at && new Date(employee.invitation_expires_at) < new Date()) {
+        return NextResponse.json(
+          { error: "L'invitation a expiré (validité 72h). Veuillez demander une nouvelle invitation au gérant." },
+          { status: 403 }
+        );
+      }
     }
 
     // 2. Construct canonical email for Supabase Auth
@@ -139,13 +156,15 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 5. Update team_employees user_id link
+    // 5. Update team_employees user_id link and consume invitation token
     await supabaseAdmin
       .from("team_employees")
       .update({
         user_id: authUserId,
         employment_status: "ACTIVE",
         activity_status: "ONLINE",
+        invitation_token: null,
+        invitation_expires_at: null,
       })
       .eq("id", employee.id);
 

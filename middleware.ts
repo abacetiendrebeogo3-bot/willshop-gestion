@@ -95,15 +95,13 @@ function getSupabaseSession(request: NextRequest): { userId: string } | null {
 }
 
 async function getUserRole(userId: string, request: NextRequest): Promise<string> {
-  const cachedRole = request.cookies.get('willshop_role')?.value;
-  if (cachedRole && ['OWNER', 'CEO', 'MANAGER', 'COMMERCIAL', 'SALES', 'LIVREUR', 'DRIVER'].includes(cachedRole)) {
-    return cachedRole;
-  }
-
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://stbzctncpvgqdpybcrmg.supabase.co';
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-  if (!serviceKey) return 'OWNER';
+  if (!serviceKey) {
+    console.error('[Middleware Security Error] SUPABASE_SERVICE_ROLE_KEY is missing');
+    return 'UNAUTHORIZED';
+  }
 
   try {
     const res = await fetch(
@@ -120,14 +118,14 @@ async function getUserRole(userId: string, request: NextRequest): Promise<string
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
-        return data[0].role || 'OWNER';
+        return data[0].role || 'COMMERCIAL';
       }
     }
   } catch (e) {
     console.error('[Middleware Role Fetch Error]', e);
   }
 
-  return 'OWNER';
+  return 'UNAUTHORIZED';
 }
 
 function getHomePathForRole(role: string): string {
@@ -136,6 +134,9 @@ function getHomePathForRole(role: string): string {
   }
   if (role === 'LIVREUR' || role === 'DRIVER') {
     return '/delivery/my-deliveries';
+  }
+  if (role === 'UNAUTHORIZED') {
+    return '/login';
   }
   return '/ceo';
 }
@@ -169,6 +170,15 @@ export async function middleware(request: NextRequest) {
 
     // 2. Authenticated user
     const role = await getUserRole(session.userId, request);
+
+    if (role === 'UNAUTHORIZED') {
+      if (!isAuthRoute) {
+        const loginUrl = new URL('/login', request.url);
+        return NextResponse.redirect(loginUrl);
+      }
+      return NextResponse.next();
+    }
+
     const homePath = getHomePathForRole(role);
 
     // If visiting auth routes while logged in -> redirect to role home
