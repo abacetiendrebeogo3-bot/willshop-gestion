@@ -25,6 +25,27 @@ import { createClient } from "@/src/infrastructure/supabase/client";
 
 export const dynamic = "force-dynamic";
 
+interface ProductCatalogItem {
+  id: string;
+  name: string;
+  sku: string;
+  unitPrice: number;
+  availableStock: number;
+}
+
+interface CustomerOption {
+  id: string;
+  name: string;
+  phone: string;
+}
+
+interface OrderItemRow {
+  id: string;
+  productId: string;
+  quantity: number;
+  unitPrice: number;
+}
+
 export default function NewOrderPage() {
   const router = useRouter();
 
