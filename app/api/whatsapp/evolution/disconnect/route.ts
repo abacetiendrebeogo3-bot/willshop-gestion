@@ -68,12 +68,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Initialize Evolution Adapter and check credentials
-    const evolutionAdapter = new EvolutionWhatsAppAdapter();
+    // 3. Fetch org settings to see if dynamic credentials exist
+    const { data: orgData } = await supabaseAdmin
+      .from('organizations')
+      .select('settings')
+      .eq('id', organizationId)
+      .single();
+
+    const orgSettings = orgData?.settings || {};
+    const evoUrl = process.env.EVOLUTION_API_URL || process.env.NEXT_PUBLIC_EVOLUTION_API_URL || orgSettings.evolution_api_url || '';
+    const evoKey = process.env.EVOLUTION_API_KEY || orgSettings.evolution_api_key || '';
+
+    const evolutionAdapter = new EvolutionWhatsAppAdapter(evoUrl, evoKey);
     if (!evolutionAdapter.isConfigured()) {
       return NextResponse.json(
         { error: evolutionAdapter.getConfigError() },
-        { status: 500 }
+        { status: 400 }
       );
     }
 

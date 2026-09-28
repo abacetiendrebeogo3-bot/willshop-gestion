@@ -174,6 +174,10 @@ export default function ConversationsPage() {
   const [connectionStatus, setConnectionStatus] = useState<string>("UNKNOWN");
   const [connectedPhone, setConnectedPhone] = useState<string | null>(null);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+  const [showConfigForm, setShowConfigForm] = useState(false);
+  const [inputEvoUrl, setInputEvoUrl] = useState("https://evolution-api.willshop.bf");
+  const [inputEvoKey, setInputEvoKey] = useState("");
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [memberPhone, setMemberPhone] = useState("");
@@ -229,10 +233,17 @@ export default function ConversationsPage() {
       if (data?.state === "CONNECTED") {
         setConnectionStatus("CONNECTED");
         setConnectedPhone(data.phoneNumber || null);
+        setShowConfigForm(false);
         showToast("✓ WhatsApp connecté avec succès !");
       } else if (data?.qrCode?.base64) {
         setConnectionStatus("WAITING_QR");
         setQrCodeBase64(data.qrCode.base64);
+        setShowConfigForm(false);
+      } else if (data?.missingConfig || data?.error?.includes("Evolution API")) {
+        setConnectionStatus("UNCONFIGURED");
+        setQrError(data.error);
+        setShowConfigForm(true);
+        if (data.configuredUrl) setInputEvoUrl(data.configuredUrl);
       } else if (data?.error) {
         setConnectionStatus("ERROR");
         setQrError(data.error);
@@ -245,6 +256,38 @@ export default function ConversationsPage() {
       setQrError("Erreur réseau lors de la connexion à l'API WhatsApp.");
     } finally {
       setIsCheckingStatus(false);
+    }
+  };
+
+  const handleSaveWhatsappSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputEvoUrl.trim() || !inputEvoKey.trim()) {
+      showToast("Veuillez renseigner l'URL du serveur et la clé API.");
+      return;
+    }
+    setIsSavingSettings(true);
+    try {
+      const res = await fetch("/api/settings/whatsapp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          evolution_api_url: inputEvoUrl.trim(),
+          evolution_api_key: inputEvoKey.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        showToast(`Erreur : ${data.error || "Impossible d'enregistrer les paramètres."}`);
+        return;
+      }
+      showToast("✓ Paramètres Evolution API enregistrés avec succès !");
+      setShowConfigForm(false);
+      // Automatically retry connecting instance with new credentials
+      await handleConnectInstance();
+    } catch (err: any) {
+      showToast(`Erreur réseau : ${err.message || "Échec de sauvegarde"}`);
+    } finally {
+      setIsSavingSettings(false);
     }
   };
 
@@ -1437,12 +1480,83 @@ export default function ConversationsPage() {
           <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-[#EBE5DA] text-center space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="font-black text-base text-[#1F1917]">Lier WhatsApp API Gateway</h3>
-              <button onClick={() => setShowQrModal(false)} className="p-1 rounded-lg text-stone-400 hover:text-stone-600">
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setShowConfigForm(!showConfigForm)}
+                  title="Configurer le serveur Evolution API"
+                  className="p-1.5 rounded-lg text-stone-400 hover:text-[#800020] hover:bg-rose-50 transition-colors"
+                >
+                  <Sparkles className="w-4 h-4" />
+                </button>
+                <button onClick={() => setShowQrModal(false)} className="p-1 rounded-lg text-stone-400 hover:text-stone-600">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
-            {isCheckingStatus ? (
+            {showConfigForm ? (
+              <form onSubmit={handleSaveWhatsappSettings} className="space-y-3 text-left">
+                <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-[11px] font-medium leading-relaxed">
+                  <p className="font-bold">Configuration Evolution API :</p>
+                  Saisissez l'URL et la clé API de votre instance Evolution pour générer le QR Code.
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-extrabold text-[#1F1917] mb-1">
+                    URL Serveur Evolution API
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="https://evolution-api.willshop.bf"
+                    value={inputEvoUrl}
+                    onChange={(e) => setInputEvoUrl(e.target.value)}
+                    className="w-full bg-[#FAF8F5] border border-[#EBE5DA] rounded-xl px-3 py-2 text-xs text-[#1F1917] outline-none font-mono"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-extrabold text-[#1F1917] mb-1">
+                    Clé API (EVOLUTION_API_KEY)
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Entrez votre clé API Evolution"
+                    value={inputEvoKey}
+                    onChange={(e) => setInputEvoKey(e.target.value)}
+                    className="w-full bg-[#FAF8F5] border border-[#EBE5DA] rounded-xl px-3 py-2 text-xs text-[#1F1917] outline-none font-mono"
+                    required
+                  />
+                </div>
+
+                <div className="pt-2 flex gap-2">
+                  {qrCodeBase64 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowConfigForm(false)}
+                      className="px-3 py-2.5 bg-stone-100 text-stone-700 text-xs font-bold rounded-xl hover:bg-stone-200"
+                    >
+                      Annuler
+                    </button>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={isSavingSettings}
+                    className="flex-1 py-2.5 bg-[#800020] hover:bg-[#660019] text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2"
+                  >
+                    {isSavingSettings ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Enregistrement...</span>
+                      </>
+                    ) : (
+                      <span>Enregistrer & Connecter</span>
+                    )}
+                  </button>
+                </div>
+              </form>
+            ) : isCheckingStatus ? (
               <div className="py-12 flex flex-col items-center gap-3">
                 <Loader2 className="w-8 h-8 animate-spin text-[#800020]" />
                 <p className="text-xs font-bold text-stone-500">Connexion à Evolution API...</p>
@@ -1455,9 +1569,16 @@ export default function ConversationsPage() {
                 </p>
               </div>
             ) : qrError ? (
-              <div className="p-4 bg-red-50 text-red-700 rounded-2xl text-xs font-semibold space-y-2">
+              <div className="p-4 bg-red-50 text-red-700 rounded-2xl text-xs font-semibold space-y-3">
                 <AlertCircle className="w-6 h-6 mx-auto text-red-500" />
                 <p>{qrError}</p>
+                <button
+                  type="button"
+                  onClick={() => setShowConfigForm(true)}
+                  className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 text-[11px] font-bold rounded-lg transition-colors"
+                >
+                  Configurer l'API Evolution
+                </button>
               </div>
             ) : (
               <div className="py-6 text-xs text-stone-500 font-medium">
@@ -1465,12 +1586,14 @@ export default function ConversationsPage() {
               </div>
             )}
 
-            <button
-              onClick={() => checkEvolutionStatus()}
-              className="w-full py-2.5 bg-[#1F1917] hover:bg-black text-white text-xs font-bold rounded-xl transition-all"
-            >
-              Vérifier le statut de connexion
-            </button>
+            {!showConfigForm && (
+              <button
+                onClick={() => checkEvolutionStatus()}
+                className="w-full py-2.5 bg-[#1F1917] hover:bg-black text-white text-xs font-bold rounded-xl transition-all"
+              >
+                Vérifier le statut de connexion
+              </button>
+            )}
           </div>
         </div>
       )}
