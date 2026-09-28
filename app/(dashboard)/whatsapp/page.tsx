@@ -116,6 +116,7 @@ export default function ConversationsPage() {
   const [isCeo, setIsCeo] = useState<boolean>(false);
   const [showQrModal, setShowQrModal] = useState(false);
   const [qrCodeBase64, setQrCodeBase64] = useState<string | null>(null);
+  const [qrError, setQrError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<string>("LOADING");
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
 
@@ -128,6 +129,8 @@ export default function ConversationsPage() {
   const handleConnectInstance = async () => {
     setShowQrModal(true);
     setIsCheckingStatus(true);
+    setQrCodeBase64(null);
+    setQrError(null);
     try {
       const res = await fetch("/api/whatsapp/evolution/instance", { method: "POST" });
       const data = await res.json();
@@ -137,9 +140,16 @@ export default function ConversationsPage() {
       } else if (data?.qrCode?.base64) {
         setConnectionStatus("WAITING_QR");
         setQrCodeBase64(data.qrCode.base64);
+      } else if (data?.error) {
+        setConnectionStatus("ERROR");
+        setQrError(data.error);
+      } else {
+        setConnectionStatus("WAITING_QR");
+        setQrError("Impossible de générer le QR code. Vérifiez vos clés Evolution API sur Vercel.");
       }
     } catch (_e: any) {
-      showToast("Scannez le QR Code pour relier WhatsApp.");
+      setConnectionStatus("ERROR");
+      setQrError("Erreur réseau lors de la communication avec l'API WhatsApp.");
     } finally {
       setIsCheckingStatus(false);
     }
@@ -867,11 +877,25 @@ export default function ConversationsPage() {
                   Ouvrez WhatsApp sur votre téléphone, allez dans <strong>Appareils connectés</strong> et scannez ce code.
                 </p>
               </div>
-            ) : (
+            ) : qrError ? (
+              <div className="py-6 space-y-2">
+                <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto" />
+                <p className="text-xs font-bold text-stone-900">Erreur Configuration WhatsApp API</p>
+                <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl text-left">
+                  <p className="text-[11px] text-amber-950 font-semibold leading-relaxed">{qrError}</p>
+                </div>
+              </div>
+            ) : connectionStatus === "CONNECTED" ? (
               <div className="py-6 space-y-2">
                 <Check className="w-10 h-10 text-emerald-500 mx-auto" />
                 <p className="text-xs font-bold text-stone-900">Numéro WhatsApp actuellement relié !</p>
                 <p className="text-[11px] text-stone-500">Les messages et invitations d'équipe sont acheminés en temps réel.</p>
+              </div>
+            ) : (
+              <div className="py-6 space-y-2">
+                <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto" />
+                <p className="text-xs font-bold text-stone-900">Information WhatsApp Gateway</p>
+                <p className="text-[11px] text-stone-500">Scannez le QR code généré pour synchroniser votre instance.</p>
               </div>
             )}
 
