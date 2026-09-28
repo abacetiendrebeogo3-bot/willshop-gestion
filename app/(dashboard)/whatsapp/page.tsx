@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/src/infrastructure/supabase/client";
 import {
   Search,
@@ -191,6 +192,10 @@ export default function ConversationsPage() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const assistantEndRef = useRef<HTMLDivElement>(null);
+
+  // Read ?conv= URL param to auto-open a conversation (e.g. from CRM)
+  const searchParams = useSearchParams();
+  const convParamId = searchParams?.get("conv") || null;
 
   // Toast Notification helper
   const showToast = (msg: string) => {
@@ -474,6 +479,16 @@ export default function ConversationsPage() {
     loadConversations();
     checkEvolutionStatus();
   }, [loadConversations, checkEvolutionStatus]);
+
+  // Auto-open conversation from URL ?conv= param (coming from CRM page)
+  useEffect(() => {
+    if (!convParamId || conversations.length === 0) return;
+    const target = conversations.find((c) => c.id === convParamId);
+    if (target) {
+      loadMessages(target);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [convParamId, conversations]);
 
   // Scroll messages to bottom
   useEffect(() => {

@@ -21,6 +21,7 @@ import {
   AlertTriangle,
   ChevronRight,
   Filter,
+  ExternalLink,
 } from "lucide-react";
 
 interface CustomerRecord {
@@ -42,6 +43,10 @@ export default function CustomersCRMPage() {
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerRecord | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [customerConvId, setCustomerConvId] = useState<string | null>(null);
+  const [isLoadingConv, setIsLoadingConv] = useState<boolean>(false);
+  // show ghost customers (auto-created from WhatsApp with no real name)
+  const [showGhosts, setShowGhosts] = useState<boolean>(false);
 
   // Form states for adding customer
   const [formName, setFormName] = useState<string>("");
@@ -135,8 +140,24 @@ export default function CustomersCRMPage() {
     }
   };
 
+  // A customer is considered a "ghost" if their name is purely derived from the phone number
+  // (auto-created by WhatsApp webhook with no human name provided)
+  const isGhostCustomer = (c: CustomerRecord) => {
+    const name = c.name.trim();
+    // Ghost patterns: just a number, "Client XXXX", or "WhatsApp" appended variations
+    if (/^\+?\d[\d\s\-]+$/.test(name)) return true;
+    if (/^Client\s+\d+$/i.test(name)) return true;
+    if (/^Client\s+WhatsApp$/i.test(name)) return true;
+    if (name === "Client WhatsApp" || name === "Client Sans Nom") return true;
+    if (name.toLowerCase().endsWith(" whatsapp") && name.split(" ").length <= 2) return true;
+    return false;
+  };
+
   const filteredCustomers = useMemo(() => {
     return customers.filter((c) => {
+      // Filter out ghost customers unless explicitly shown
+      if (!showGhosts && isGhostCustomer(c)) return false;
+
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase().trim();
       return (
@@ -145,7 +166,7 @@ export default function CustomersCRMPage() {
         c.address.toLowerCase().includes(q)
       );
     });
-  }, [customers, searchQuery]);
+  }, [customers, searchQuery, showGhosts]);
 
   const handleAddCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -228,6 +249,33 @@ export default function CustomersCRMPage() {
 
   const [showPurgeModal, setShowPurgeModal] = useState<boolean>(false);
 
+  const loadCustomerConversation = async (customerId: string) => {
+    if (!customerId) return;
+    setIsLoadingConv(true);
+    setCustomerConvId(null);
+    try {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("customer_id", customerId)
+        .neq("status", "ARCHIVED")
+        .order("last_message_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setCustomerConvId(data?.id || null);
+    } catch {
+      setCustomerConvId(null);
+    } finally {
+      setIsLoadingConv(false);
+    }
+  };
+
+  const ghostCount = useMemo(
+    () => customers.filter((c) => isGhostCustomer(c)).length,
+    [customers]
+  );
+
   const handlePurgeAllCustomers = async () => {
     try {
       const supabase = createClient();
@@ -294,6 +342,19 @@ export default function CustomersCRMPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          {ghostCount > 0 && (
+            <button
+              onClick={() => setShowGhosts(!showGhosts)}
+              className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border ${
+                showGhosts
+                  ? "bg-amber-100 text-amber-800 border-amber-300"
+                  : "bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100"
+              }`}
+            >
+              <Filter className="w-3.5 h-3.5" />
+              <span>{showGhosts ? `Masquer les ${ghostCount} non identifiés` : `Afficher ${ghostCount} non identifiés`}</span>
+            </button>
+          )}
           {customers.length > 0 && (
             <button
               onClick={() => setShowPurgeModal(true)}
@@ -355,7 +416,7 @@ export default function CustomersCRMPage() {
             filteredCustomers.map((cust) => (
               <div
                 key={cust.id}
-                onClick={() => setSelectedCustomer(cust)}
+                onClick={() => { setSelectedCustomer(cust); loadCustomerConversation(cust.id); }}
                 className={`p-4 rounded-2xl border transition-all cursor-pointer bg-white flex items-center justify-between gap-4 shadow-2xs hover:shadow-xs ${
                   selectedCustomer?.id === cust.id
                     ? "border-[#800020] ring-2 ring-[#800020]/20"
@@ -457,6 +518,23 @@ export default function CustomersCRMPage() {
 
               {/* Actions */}
               <div className="pt-2 space-y-2">
+                {isLoadingConv ? (
+                  <div className="w-full py-2.5 text-xs text-center text-stone-400 font-bold">Chargement conversation...</div>
+                ) : customerConvId ? (
+                  <Link
+                    href={`/whatsapp?conv=${customerConvId}`}
+                    className="w-full bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center justify-center gap-2"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Voir la conversation WhatsApp</span>
+                    <ExternalLink className="w-3.5 h-3.5 opacity-70" />
+                  </Link>
+                ) : (
+                  <div className="w-full py-2 text-[11px] text-center text-stone-400 bg-stone-50 rounded-xl border border-stone-100">
+                    Aucune conversation WhatsApp trouvée
+                  </div>
+                )}
+
                 <Link
                   href="/orders/new"
                   className="w-full bg-[#800020] hover:bg-[#660019] text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center justify-center gap-2"
