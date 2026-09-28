@@ -416,11 +416,19 @@ export class WhatsAppApplicationService {
     const rawDigits = event.senderPhone.replace(/[^\d]/g, '');
 
     // Geographic guard: only create customers for Burkina Faso (+226) numbers.
-    // Foreign/spam/test numbers still get a conversation but no CRM customer record.
     const ALLOWED_COUNTRY_PREFIXES = ['+226', '226'];
     const isAllowedCountry = ALLOWED_COUNTRY_PREFIXES.some(
       (prefix) => normalizedPhone.startsWith(prefix) || rawDigits.startsWith(prefix.replace('+', ''))
     );
+
+    if (!rawDigits || rawDigits.length < 8 || !isAllowedCountry) {
+      console.info(`[WEBHOOK_GEO_GUARD] Invalid or foreign number ${normalizedPhone} ignored. No conversation created.`);
+      return {
+        status: 'IGNORED',
+        message: 'Foreign or invalid number ignored to avoid CRM clutter',
+        organizationId: targetOrgId,
+      };
+    }
 
     let customerId = '';
     const { data: existingCusts } = await this.supabase
@@ -435,8 +443,8 @@ export class WhatsAppApplicationService {
 
     if (existingCust) {
       customerId = existingCust.id;
-    } else if (isAllowedCountry) {
-      // Only create a CRM customer for local (+226) numbers
+    } else {
+      // Only create a CRM customer for local (+226) numbers (which is guaranteed here)
       try {
         const { data: newCust } = await this.supabase
           .from('customers')
@@ -464,16 +472,7 @@ export class WhatsAppApplicationService {
 
         if (retryCust) customerId = retryCust.id;
       }
-    } else {
-      // Foreign number: completely ignore and reject to avoid CRM clutter
-      console.info(`[WEBHOOK_GEO_GUARD] Foreign number ${normalizedPhone} ignored. No conversation created.`);
-      return {
-        status: 'IGNORED',
-        message: 'Foreign number ignored to avoid CRM clutter',
-        organizationId: targetOrgId,
-      };
     }
-
 
     // 4. Lookup or Create Single Active Conversation per Customer
     let conversationId = '';

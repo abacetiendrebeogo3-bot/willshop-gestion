@@ -266,9 +266,9 @@ export default function CustomersCRMPage() {
           .from("messages")
           .select("*")
           .eq("conversation_id", data.id)
-          .order("created_at", { ascending: true })
+          .order("created_at", { ascending: false })
           .limit(50);
-        setCustomerMessages(msgs || []);
+        setCustomerMessages((msgs || []).reverse());
       }
     } catch {
       setCustomerConvId(null);
