@@ -415,6 +415,13 @@ export class WhatsAppApplicationService {
       : `+${event.senderPhone.replace(/[^\d]/g, '')}`;
     const rawDigits = event.senderPhone.replace(/[^\d]/g, '');
 
+    // Geographic guard: only create customers for Burkina Faso (+226) numbers.
+    // Foreign/spam/test numbers still get a conversation but no CRM customer record.
+    const ALLOWED_COUNTRY_PREFIXES = ['+226', '226'];
+    const isAllowedCountry = ALLOWED_COUNTRY_PREFIXES.some(
+      (prefix) => normalizedPhone.startsWith(prefix) || rawDigits.startsWith(prefix.replace('+', ''))
+    );
+
     let customerId = '';
     const { data: existingCusts } = await this.supabase
       .from('customers')
@@ -428,7 +435,8 @@ export class WhatsAppApplicationService {
 
     if (existingCust) {
       customerId = existingCust.id;
-    } else {
+    } else if (isAllowedCountry) {
+      // Only create a CRM customer for local (+226) numbers
       try {
         const { data: newCust } = await this.supabase
           .from('customers')
@@ -439,6 +447,7 @@ export class WhatsAppApplicationService {
             phone: normalizedPhone,
             whatsapp_phone: normalizedPhone,
             status: 'ACTIVE',
+            source: 'WHATSAPP_AUTO',
           })
           .select()
           .single();
@@ -455,7 +464,11 @@ export class WhatsAppApplicationService {
 
         if (retryCust) customerId = retryCust.id;
       }
+    } else {
+      // Foreign number: log but don't create CRM record
+      console.info(`[WEBHOOK_GEO_GUARD] Foreign number ${normalizedPhone} — conversation stored, no CRM customer created.`);
     }
+
 
     // 4. Lookup or Create Single Active Conversation per Customer
     let conversationId = '';

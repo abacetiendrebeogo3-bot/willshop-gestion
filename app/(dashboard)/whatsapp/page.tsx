@@ -487,11 +487,66 @@ export default function ConversationsPage() {
   }, [loadConversations, checkEvolutionStatus]);
 
   // Auto-open conversation from URL ?conv= param (coming from CRM page)
+  // FIX: If the conversation isn't in the current list (filtered/different org), fetch it directly
   useEffect(() => {
-    if (!convParamId || conversations.length === 0) return;
-    const target = conversations.find((c) => c.id === convParamId);
-    if (target) {
-      loadMessages(target);
+    if (!convParamId) return;
+
+    // Try to find in already-loaded conversations
+    const inList = conversations.find((c) => c.id === convParamId);
+    if (inList) {
+      loadMessages(inList);
+      return;
+    }
+
+    // Fallback: load conversation directly from Supabase if not in list
+    if (conversations.length > 0) {
+      // Only attempt after conversations have loaded (to know list is populated)
+      (async () => {
+        try {
+          const supabase = createClient();
+          const { data: conv } = await supabase
+            .from("conversations")
+            .select(`
+              id, customer_id, status, channel, assigned_user_id, assigned_commercial_id,
+              assigned_agent, order_intent_status, last_message_at, unread_count,
+              conversation_mode, metadata,
+              customers ( id, first_name, last_name, phone, whatsapp_phone, city )
+            `)
+            .eq("id", convParamId)
+            .maybeSingle();
+
+          if (conv) {
+            const cust = Array.isArray(conv.customers) ? conv.customers[0] : conv.customers;
+            const customerName = cust?.first_name
+              ? `${cust.first_name} ${cust.last_name || ""}`.trim()
+              : cust?.phone || "Client WhatsApp";
+            const fallbackConv: Conversation = {
+              id: conv.id,
+              customerId: conv.customer_id || cust?.id || "",
+              customerName,
+              phoneNumber: cust?.phone || cust?.whatsapp_phone || "Inconnu",
+              city: cust?.city || "",
+              lastMessage: conv.metadata?.last_message || "...",
+              time: conv.last_message_at
+                ? new Date(conv.last_message_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+                : "",
+              lastMessageDate: conv.last_message_at ? new Date(conv.last_message_at) : new Date(),
+              tag: (conv.metadata?.tag as CustomerTag) || "EN_ATTENTE",
+              orderIntentStatus: conv.order_intent_status || "NONE",
+              unreadCount: conv.unread_count || 0,
+              assignedUserId: conv.assigned_user_id || undefined,
+              assignedCommercialId: conv.assigned_commercial_id || undefined,
+              assignedAgent: conv.assigned_agent || "SALES_AI",
+              conversationMode: conv.conversation_mode || "FOLLOWUP_ONLY",
+              avatarInitials: customerName.substring(0, 2).toUpperCase(),
+              avatarColor: "bg-[#800020]/10 text-[#800020]",
+            };
+            loadMessages(fallbackConv);
+          }
+        } catch (e) {
+          console.error("[auto-open fallback] error:", e);
+        }
+      })();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [convParamId, conversations]);

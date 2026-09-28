@@ -88,7 +88,17 @@ export default function CEOHomePage() {
 
   useEffect(() => {
     const today = new Date();
+    const todayKey = today.toISOString().slice(0, 10); // YYYY-MM-DD
     setTodayDateStr(today.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }));
+
+    // If review already done today, go straight to dashboard
+    try {
+      const doneKey = localStorage.getItem("ceo_review_done");
+      if (doneKey === todayKey) {
+        setViewMode("EXECUTIVE_DASHBOARD");
+      }
+    } catch (_) {}
+
     loadCEORoutine();
   }, []);
 
@@ -113,6 +123,11 @@ export default function CEOHomePage() {
     if (currentStepIndex < REVIEW_STEPS.length - 1) {
       setCurrentStepIndex(currentStepIndex + 1);
     } else {
+      // Persist today's review as done so it doesn't restart on reload
+      try {
+        const todayKey = new Date().toISOString().slice(0, 10);
+        localStorage.setItem("ceo_review_done", todayKey);
+      } catch (_) {}
       setViewMode("EXECUTIVE_DASHBOARD");
     }
   };
@@ -159,7 +174,14 @@ export default function CEOHomePage() {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setViewMode(viewMode === "GUIDED_REVIEW" ? "EXECUTIVE_DASHBOARD" : "GUIDED_REVIEW")}
+            onClick={() => {
+              if (viewMode === "EXECUTIVE_DASHBOARD") {
+                // When going back to review, clear persistence so it's a fresh start
+                try { localStorage.removeItem("ceo_review_done"); } catch (_) {}
+                setCurrentStepIndex(0);
+              }
+              setViewMode(viewMode === "GUIDED_REVIEW" ? "EXECUTIVE_DASHBOARD" : "GUIDED_REVIEW");
+            }}
             className="px-3.5 py-1.5 bg-white border border-[#EBE5DA] hover:border-[#800020] text-[#1F1917] font-extrabold text-xs rounded-xl shadow-2xs transition-all flex items-center gap-1.5"
           >
             {viewMode === "GUIDED_REVIEW" ? (
@@ -170,7 +192,7 @@ export default function CEOHomePage() {
             ) : (
               <>
                 <RotateCcw className="w-3.5 h-3.5 text-[#800020]" />
-                <span>Recommencer la Revue</span>
+                <span>Refaire la Revue</span>
               </>
             )}
           </button>

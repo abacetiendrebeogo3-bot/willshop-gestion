@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -15,32 +15,12 @@ import {
   Package,
   User,
   ShieldCheck,
+  Search,
+  Phone,
+  Loader2,
+  UserPlus,
+  X,
 } from "lucide-react";
-
-interface ProductCatalogItem {
-  id: string;
-  name: string;
-  sku: string;
-  unitPrice: number;
-  availableStock: number;
-}
-
-interface OrderItemRow {
-  id: string;
-  productId: string;
-  quantity: number;
-  unitPrice: number;
-}
-
-interface CustomerOption {
-  id: string;
-  name: string;
-  phone: string;
-  whatsappConv: string;
-  hasIntent: boolean;
-}
-
-import { useEffect } from "react";
 import { createClient } from "@/src/infrastructure/supabase/client";
 
 export const dynamic = "force-dynamic";
@@ -49,8 +29,6 @@ export default function NewOrderPage() {
   const router = useRouter();
 
   const [catalog, setCatalog] = useState<ProductCatalogItem[]>([]);
-  const [customersList, setCustomersList] = useState<CustomerOption[]>([]);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
   const [rows, setRows] = useState<OrderItemRow[]>([]);
   const [deliveryRequired, setDeliveryRequired] = useState<boolean>(true);
   const [deliveryZone, setDeliveryZone] = useState<string>("Ouagadougou Centre");
@@ -61,19 +39,67 @@ export default function NewOrderPage() {
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
   const [orgId, setOrgId] = useState<string | null>(null);
 
+  // ── Phone search state (replaces dropdown) ──
+  const [phoneSearch, setPhoneSearch] = useState<string>("");
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerOption | null>(null);
+  const [phoneResults, setPhoneResults] = useState<CustomerOption[]>([]);
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [showCreateNew, setShowCreateNew] = useState<boolean>(false);
+  const [newClientName, setNewClientName] = useState<string>("");
+  const phoneSearchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     fetchInitialData();
   }, []);
+
+  // Live phone search
+  useEffect(() => {
+    const digits = phoneSearch.replace(/\D/g, "");
+    if (digits.length < 6) {
+      setPhoneResults([]);
+      setShowCreateNew(false);
+      return;
+    }
+    if (phoneSearchTimeout.current) clearTimeout(phoneSearchTimeout.current);
+    phoneSearchTimeout.current = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const supabase = createClient();
+        const { data } = await supabase
+          .from("customers")
+          .select("id, first_name, last_name, full_name, phone")
+          .eq("organization_id", orgId || "")
+          .is("deleted_at", null)
+          .or(`phone.ilike.%${digits}%,phone.ilike.%${phoneSearch.trim()}%`)
+          .limit(5);
+        if (data && data.length > 0) {
+          setPhoneResults(
+            data.map((c: any) => ({
+              id: c.id,
+              name: c.full_name || `${c.first_name || ""} ${c.last_name || ""}`.trim() || c.phone,
+              phone: c.phone || "",
+            }))
+          );
+          setShowCreateNew(false);
+        } else {
+          setPhoneResults([]);
+          setShowCreateNew(true);
+        }
+      } catch {
+        setPhoneResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 400);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phoneSearch, orgId]);
 
   const fetchInitialData = async () => {
     setIsLoadingData(true);
     try {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setIsLoadingData(false);
-        return;
-      }
+      if (!user) { setIsLoadingData(false); return; }
 
       const { data: roleData } = await supabase
         .from("user_organization_roles")
@@ -85,12 +111,9 @@ export default function NewOrderPage() {
       const activeOrgId = roleData && roleData.length > 0 ? roleData[0].organization_id : null;
       setOrgId(activeOrgId);
 
-      if (!activeOrgId) {
-        setIsLoadingData(false);
-        return;
-      }
+      if (!activeOrgId) { setIsLoadingData(false); return; }
 
-      // Fetch Products
+      // Fetch Products only
       const { data: prods } = await supabase
         .from("products")
         .select("*")
@@ -110,30 +133,6 @@ export default function NewOrderPage() {
       } else {
         setCatalog([]);
       }
-
-      // Fetch Customers
-      const { data: custs } = await supabase
-        .from("customers")
-        .select("*")
-        .eq("organization_id", activeOrgId)
-        .is("deleted_at", null);
-
-      if (custs && custs.length > 0) {
-        const formattedCusts: CustomerOption[] = custs.map((c: any) => ({
-          id: c.id,
-          name: c.full_name || `${c.first_name || ""} ${c.last_name || ""}`.trim() || c.phone,
-          phone: c.phone || "Non renseigné",
-          whatsappConv: `Client enregistré via ${c.source || "CRM"}`,
-          hasIntent: true,
-        }));
-        setCustomersList(formattedCusts);
-        setSelectedCustomerId(formattedCusts[0].id);
-        if (formattedCusts[0].phone) {
-          setDeliveryAddress(`Ouagadougou (${formattedCusts[0].phone})`);
-        }
-      } else {
-        setCustomersList([]);
-      }
     } catch (err) {
       console.error("[New Order] Error fetching data:", err);
     } finally {
@@ -141,10 +140,34 @@ export default function NewOrderPage() {
     }
   };
 
-  const selectedCustomer = useMemo(() => {
-    if (!customersList || customersList.length === 0) return null;
-    return customersList.find((c) => c.id === selectedCustomerId) || customersList[0] || null;
-  }, [customersList, selectedCustomerId]);
+  const handleCreateNewCustomer = async () => {
+    if (!newClientName.trim() || !phoneSearch.trim() || !orgId) return;
+    try {
+      const supabase = createClient();
+      const normalizedPhone = phoneSearch.trim().startsWith("+") ? phoneSearch.trim() : `+${phoneSearch.replace(/\D/g, "")}`;
+      const { data: newCust, error } = await supabase
+        .from("customers")
+        .insert({
+          organization_id: orgId,
+          first_name: newClientName.trim(),
+          phone: normalizedPhone,
+          whatsapp_phone: normalizedPhone,
+          status: "ACTIVE",
+          source: "CRM",
+        })
+        .select()
+        .single();
+      if (!error && newCust) {
+        setSelectedCustomer({ id: newCust.id, name: newClientName.trim(), phone: normalizedPhone });
+        setPhoneResults([]);
+        setShowCreateNew(false);
+        setPhoneSearch(normalizedPhone);
+        showToast(`✓ Client ${newClientName.trim()} créé !`);
+      }
+    } catch (err: any) {
+      showToast(`Erreur: ${err.message}`);
+    }
+  };
 
   // Dynamic calculations
   const subtotal = useMemo(() => {
@@ -234,7 +257,7 @@ export default function NewOrderPage() {
         .insert({
           organization_id: targetOrgId,
           order_number: orderNumber,
-          customer_id: selectedCustomerId || null,
+          customer_id: selectedCustomer?.id || null,
           status,
           subtotal,
           tax_amount: vat18,
@@ -320,7 +343,7 @@ export default function NewOrderPage() {
             </span>
           </div>
           <p className="text-gray-700">
-            Origine : {selectedCustomer?.whatsappConv || "Intention WhatsApp"}. Vérifiez attentivement les quantités et la disponibilité du stock physique avant de confirmer.
+            Vérifiez attentivement les quantités et la disponibilité du stock physique avant de confirmer.
           </p>
         </div>
       </div>
@@ -332,29 +355,91 @@ export default function NewOrderPage() {
           <span>1. Informations Client</span>
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-          <div>
-            <label className="block text-gray-600 font-bold mb-1.5">Sélectionner le client :</label>
-            <select
-              value={selectedCustomerId}
-              onChange={(e) => setSelectedCustomerId(e.target.value)}
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 focus:outline-none focus:border-[#800020]"
-            >
-              {customersList.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.phone}) {c.hasIntent ? "★ Intent WhatsApp" : ""}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="space-y-3 text-xs">
+          {!selectedCustomer ? (
+            <div className="space-y-2">
+              <label className="block text-gray-600 font-bold">Rechercher le client par téléphone :</label>
+              <div className="relative">
+                <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                {isSearching && <Loader2 className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />}
+                <input
+                  type="tel"
+                  value={phoneSearch}
+                  onChange={(e) => setPhoneSearch(e.target.value)}
+                  placeholder="Ex: 70 00 00 00 ou +226 70..."
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-10 py-2.5 text-xs font-semibold text-gray-900 focus:outline-none focus:border-[#800020] placeholder:font-normal"
+                />
+              </div>
 
-          <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-gray-900">{selectedCustomer?.name || "Client non sélectionné"}</span>
-              <span className="font-mono text-gray-500">{selectedCustomer?.phone || "-"}</span>
+              {phoneResults.length > 0 && (
+                <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                  {phoneResults.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => { setSelectedCustomer(c); setPhoneResults([]); setShowCreateNew(false); }}
+                      className="w-full text-left px-4 py-3 hover:bg-[#800020]/5 flex items-center justify-between border-b border-gray-100 last:border-0 transition-colors"
+                    >
+                      <div>
+                        <span className="font-bold text-gray-900 block">{c.name}</span>
+                        <span className="text-gray-400 font-mono text-[11px]">{c.phone}</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-[#800020] bg-[#800020]/10 px-2 py-0.5 rounded-full">Sélectionner</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {showCreateNew && phoneSearch.replace(/\D/g, "").length >= 6 && (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-3">
+                  <p className="text-amber-800 font-bold flex items-center gap-1.5">
+                    <UserPlus className="w-4 h-4" />
+                    Aucun client trouvé. Créer un nouveau client ?
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newClientName}
+                      onChange={(e) => setNewClientName(e.target.value)}
+                      placeholder="Nom complet du client"
+                      className="flex-1 bg-white border border-amber-300 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 focus:outline-none focus:border-[#800020]"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCreateNewCustomer}
+                      disabled={!newClientName.trim()}
+                      className="px-4 py-2 bg-[#800020] text-white rounded-xl text-xs font-bold disabled:opacity-50 hover:bg-[#660019]"
+                    >
+                      Créer
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {phoneSearch.length === 0 && (
+                <p className="text-[11px] text-gray-400 text-center py-1">Tapez au moins 6 chiffres pour rechercher un client</p>
+              )}
             </div>
-            <p className="text-[11px] text-gray-500">{selectedCustomer?.whatsappConv || "Aucune conversation liée"}</p>
-          </div>
+          ) : (
+            <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-[#800020] text-white flex items-center justify-center font-bold text-xs shrink-0">
+                  {selectedCustomer.name.substring(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <span className="font-bold text-gray-900 text-xs block">{selectedCustomer.name}</span>
+                  <span className="text-gray-500 font-mono text-[11px]">{selectedCustomer.phone}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setSelectedCustomer(null); setPhoneSearch(""); setPhoneResults([]); setShowCreateNew(false); }}
+                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-white rounded-lg transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
