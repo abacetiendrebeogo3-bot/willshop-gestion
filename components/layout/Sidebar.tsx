@@ -122,6 +122,7 @@ export function Sidebar() {
     { name: "Clients", href: "/sales/customers", icon: Users },
     { name: "Finance", href: "/finance", icon: Wallet },
     { name: "Rapports", href: "/bi", icon: BrainCircuit },
+    { name: "Automatisations", href: "/automation", icon: Zap },
     { name: "Paramètres", href: "/settings", icon: Settings },
   ];
 

@@ -504,7 +504,7 @@ export default function FinanceDashboardPage() {
 
         <div className="flex items-center gap-3 w-full md:w-auto">
           {/* Date Selector Dropdown */}
-          <div className="flex items-center gap-2.5 bg-white border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-semibold text-gray-700 shadow-2xs hover:border-gray-300 transition-colors cursor-pointer">
+          <div onClick={() => showToast("Le filtrage par période est en cours de développement")} className="flex items-center gap-2.5 bg-white border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-semibold text-gray-700 shadow-2xs hover:border-gray-300 transition-colors cursor-pointer">
             <Calendar className="w-4 h-4 text-gray-400" />
             <div>
               <div className="text-gray-900 font-bold">Cette semaine</div>

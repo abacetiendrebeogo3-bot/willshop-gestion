@@ -80,6 +80,7 @@ export function Navbar() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { alert("Recherche globale: Fonctionnalité en cours de développement"); setSearchQuery(""); } }}
             placeholder="Rechercher un client, une commande, une conversation..."
             className="w-full bg-white border border-[#EBE5DA] rounded-xl pl-10 pr-4 py-2 text-xs text-[#1F1917] placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#800020]/20 focus:border-[#800020] transition-all font-medium"
           />
@@ -97,6 +98,7 @@ export function Navbar() {
         {/* Notifications Bell */}
         <button
           className="relative p-2 text-stone-600 hover:text-[#1F1917] hover:bg-[#EFEADF] rounded-xl transition-colors"
+          onClick={() => alert("Notifications: Fonctionnalité en cours de développement")}
           aria-label="Notifications"
           title="Notifications"
         >
@@ -109,7 +111,7 @@ export function Navbar() {
         </button>
 
         {/* User Account Profile Badge */}
-        <div className="flex items-center gap-3 pl-3 border-l border-[#EBE5DA]">
+        <div className="flex items-center gap-3 pl-3 border-l border-[#EBE5DA] cursor-pointer hover:bg-stone-50 rounded-xl px-2 py-1 transition-colors" onClick={() => alert("Profil: Fonctionnalité en cours de développement")}>
           <div className="w-9 h-9 rounded-full bg-[#800020] text-white flex items-center justify-center font-bold text-xs shadow-sm ring-2 ring-[#D4A843]/50">
             {userInitials}
           </div>
@@ -119,7 +121,7 @@ export function Navbar() {
           </div>
 
           <button
-            onClick={handleSignOut}
+            onClick={(e) => { e.stopPropagation(); handleSignOut(); }}
             title="Déconnexion"
             className="p-1.5 text-stone-400 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors ml-1"
           >

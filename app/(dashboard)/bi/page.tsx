@@ -325,8 +325,21 @@ export default function BiAnalyticsPage() {
     return max;
   }, [weeklyData]);
 
-  const exportReport = () => {
-    showToast("Export du rapport PDF / Excel généré !");
+    const exportReport = () => {
+    // Generate dummy CSV
+    const csvContent = "data:text/csv;charset=utf-8," + 
+      "Indicateur,Valeur\n" +
+      "Chiffre d'affaires," + totalRevenue + "\n" +
+      "Commandes Livrées," + deliveredOrdersCount + "\n" +
+      "Panier Moyen," + avgOrderValue;
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "rapport_willshop.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("Export du rapport généré (CSV) !");
   };
 
   if (loading) {
@@ -373,7 +386,7 @@ export default function BiAnalyticsPage() {
 
         <div className="flex items-center gap-3 w-full md:w-auto">
           {/* Date Selector Dropdown */}
-          <div className="flex items-center gap-2.5 bg-white border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-semibold text-gray-700 shadow-2xs cursor-pointer hover:border-gray-300 transition-colors">
+          <div onClick={() => showToast("Le filtrage par période est en cours de développement")} className="flex items-center gap-2.5 bg-white border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-semibold text-gray-700 shadow-2xs cursor-pointer hover:border-gray-300 transition-colors">
             <Calendar className="w-4 h-4 text-gray-400" />
             <div>
               <div className="text-gray-900 font-bold">Cette semaine</div>
