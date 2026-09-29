@@ -115,7 +115,8 @@ export default function BiAnalyticsPage() {
         .from("user_organization_roles")
         .select("organization_id")
         .eq("user_id", user.id)
-        .is("deleted_at", null);
+        .is("deleted_at", null)
+      .order("created_at", { ascending: true });
 
       if (!roles || roles.length === 0) {
         setLoading(false);

@@ -361,7 +361,8 @@ export default function AIAgentsConfigPage() {
         .from("user_organization_roles")
         .select("organization_id")
         .eq("user_id", user.id)
-        .is("deleted_at", null);
+        .is("deleted_at", null)
+      .order("created_at", { ascending: true });
 
       const targetOrgId = userRoles?.[0]?.organization_id;
       if (!targetOrgId) return;

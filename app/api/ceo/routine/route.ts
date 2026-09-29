@@ -57,7 +57,8 @@ export async function GET(request: NextRequest) {
       .from('user_organization_roles')
       .select('organization_id, role')
       .eq('user_id', user.id)
-      .is('deleted_at', null);
+      .is('deleted_at', null)
+      .order("created_at", { ascending: true });
 
     const organizationId = userRoles?.[0]?.organization_id;
     if (!organizationId) {
@@ -83,5 +84,52 @@ export async function GET(request: NextRequest) {
       { error: err.message || 'Erreur lors du chargement de la routine CEO.' },
       { status: 500 }
     );
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { routineId, currentStepKey, nextStepKey, isFinished } = body;
+
+    let supabaseUrl = getRequiredEnv('NEXT_PUBLIC_SUPABASE_URL');
+    let serviceKey = getRequiredEnv('SUPABASE_SERVICE_ROLE_KEY');
+    const supabaseAdmin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+
+    // Update current step to COMPLETED
+    if (currentStepKey) {
+      await supabaseAdmin.from('routine_steps')
+        .update({ status: 'COMPLETED' })
+        .eq('routine_id', routineId)
+        .eq('step_key', currentStepKey);
+    }
+
+    // Update next step to IN_PROGRESS
+    if (nextStepKey && !isFinished) {
+      await supabaseAdmin.from('routine_steps')
+        .update({ status: 'IN_PROGRESS' })
+        .eq('routine_id', routineId)
+        .eq('step_key', nextStepKey);
+    }
+
+    // Update total_actions_completed
+    const { data: steps } = await supabaseAdmin.from('routine_steps')
+      .select('id')
+      .eq('routine_id', routineId)
+      .eq('status', 'COMPLETED');
+    
+    const completedCount = steps ? steps.length : 0;
+
+    await supabaseAdmin.from('work_routines')
+      .update({ 
+        total_actions_completed: completedCount,
+        status: isFinished ? 'COMPLETED' : 'IN_PROGRESS' 
+      })
+      .eq('id', routineId);
+
+    return NextResponse.json({ status: 'SUCCESS' });
+  } catch (err: any) {
+    console.error('[Routine PATCH Error]', err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

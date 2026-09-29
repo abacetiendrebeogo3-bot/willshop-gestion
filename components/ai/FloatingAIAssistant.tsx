@@ -69,7 +69,8 @@ export function FloatingAIAssistant() {
         .select("role, profiles(first_name, last_name)")
         .eq("user_id", user.id)
         .is("deleted_at", null)
-        .limit(1);
+      .order("created_at", { ascending: true })
+        .order("created_at", { ascending: true }).limit(1);
 
       if (roleData && roleData.length > 0) {
         const r = roleData[0].role;

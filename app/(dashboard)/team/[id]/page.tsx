@@ -72,7 +72,7 @@ export default function EmployeeDetailPage() {
         .from("user_organization_roles")
         .select("organization_id")
         .eq("user_id", user.id)
-        .limit(1)
+        .order("created_at", { ascending: true }).limit(1)
         .single();
 
       if (!roleData?.organization_id) {

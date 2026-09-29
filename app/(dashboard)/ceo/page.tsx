@@ -61,6 +61,7 @@ export default function CEOHomePage() {
   const router = useRouter();
   const [viewMode, setViewMode] = useState<"GUIDED_REVIEW" | "EXECUTIVE_DASHBOARD">("GUIDED_REVIEW");
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
+  const [routineId, setRoutineId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [todayDateStr, setTodayDateStr] = useState<string>("");
 
@@ -109,6 +110,18 @@ export default function CEOHomePage() {
       const data = await res.json();
       if (res.ok && data.status === "SUCCESS") {
         setMetrics(data.metrics);
+        if (data.routine) {
+          setRoutineId(data.routine.id);
+          if (data.routine.status === "COMPLETED") {
+            setViewMode("EXECUTIVE_DASHBOARD");
+          } else {
+            const steps = data.routine.routine_steps || [];
+            const completedCount = steps.filter((s: any) => s.status === "COMPLETED").length;
+            if (completedCount > 0 && completedCount < REVIEW_STEPS.length) {
+              setCurrentStepIndex(completedCount);
+            }
+          }
+        }
       }
     } catch (_e) {
       // Fallback
@@ -119,11 +132,27 @@ export default function CEOHomePage() {
 
   const currentStep = REVIEW_STEPS[currentStepIndex];
 
-  const handleNextStep = () => {
-    if (currentStepIndex < REVIEW_STEPS.length - 1) {
+  const handleNextStep = async () => {
+    const isFinished = currentStepIndex >= REVIEW_STEPS.length - 1;
+    const currentStepKey = REVIEW_STEPS[currentStepIndex].key;
+    const nextStepKey = isFinished ? null : REVIEW_STEPS[currentStepIndex + 1].key;
+
+    if (routineId) {
+      fetch("/api/ceo/routine", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          routineId,
+          currentStepKey,
+          nextStepKey,
+          isFinished
+        })
+      }).catch(console.error);
+    }
+
+    if (!isFinished) {
       setCurrentStepIndex(currentStepIndex + 1);
     } else {
-      // Persist today's review as done so it doesn't restart on reload
       try {
         const todayKey = new Date().toISOString().slice(0, 10);
         localStorage.setItem("ceo_review_done", todayKey);

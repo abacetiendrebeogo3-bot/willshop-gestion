@@ -87,7 +87,8 @@ export default function SettingsPage() {
           .from("user_organization_roles")
           .select("organization_id, role")
           .eq("user_id", user.id)
-          .is("deleted_at", null);
+          .is("deleted_at", null)
+      .order("created_at", { ascending: true });
 
         if (roles && roles.length > 0) {
           const currentOrgId = roles[0].organization_id;
@@ -125,7 +126,8 @@ export default function SettingsPage() {
             .from("user_organization_roles")
             .select("id, user_id, role, created_at")
             .eq("organization_id", currentOrgId)
-            .is("deleted_at", null);
+            .is("deleted_at", null)
+      .order("created_at", { ascending: true });
 
           setTeamMembers(members || []);
         }

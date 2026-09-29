@@ -146,6 +146,7 @@ export async function POST(request: NextRequest) {
       .eq("user_id", authUserId)
       .eq("organization_id", employee.organization_id)
       .is("deleted_at", null)
+      .order("created_at", { ascending: true })
       .maybeSingle();
 
     if (!existingRole) {

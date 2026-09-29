@@ -145,7 +145,8 @@ export default function StrategyCockpitPage() {
           .from("user_organization_roles")
           .select("organization_id, role")
           .eq("user_id", user.id)
-          .is("deleted_at", null);
+          .is("deleted_at", null)
+      .order("created_at", { ascending: true });
 
         if (userRoles && userRoles.length > 0) {
           targetOrgId = userRoles[0].organization_id;

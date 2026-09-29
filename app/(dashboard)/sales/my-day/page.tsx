@@ -57,6 +57,8 @@ export default function CommercialHomePage() {
   const [userName, setUserName] = useState<string>("Commercial");
   const [todayDateStr, setTodayDateStr] = useState<string>("");
   const [currentStageIndex, setCurrentStageIndex] = useState<number>(0);
+  const [routineId, setRoutineId] = useState<string | null>(null);
+  const [isRoutineFinished, setIsRoutineFinished] = useState<boolean>(false);
 
   // Quick Order Modal State
   const [showQuickOrderModal, setShowQuickOrderModal] = useState<boolean>(false);
@@ -94,6 +96,25 @@ export default function CommercialHomePage() {
         return;
       }
 
+      // 0. Fetch Routine State
+      try {
+        const rRes = await fetch("/api/sales/routine");
+        const rData = await rRes.json();
+        if (rRes.ok && rData.routine) {
+          setRoutineId(rData.routine.id);
+          if (rData.routine.status === "COMPLETED") {
+            setIsRoutineFinished(true);
+            setCurrentStageIndex(ROUTINE_STAGES.length - 1);
+          } else {
+            const steps = rData.routine.routine_steps || [];
+            const completedCount = steps.filter((s: any) => s.status === "COMPLETED").length;
+            if (completedCount > 0 && completedCount < ROUTINE_STAGES.length) {
+              setCurrentStageIndex(completedCount);
+            }
+          }
+        }
+      } catch(e) {}
+
       // 1. Resolve user profile name
       if (user.user_metadata?.first_name) {
         setUserName(user.user_metadata.first_name);
@@ -108,7 +129,8 @@ export default function CommercialHomePage() {
         .select("organization_id")
         .eq("user_id", user.id)
         .is("deleted_at", null)
-        .limit(1);
+      .order("created_at", { ascending: true })
+        .order("created_at", { ascending: true }).limit(1);
 
       const orgId = roleData?.[0]?.organization_id;
       if (!orgId) {
@@ -287,16 +309,35 @@ export default function CommercialHomePage() {
     }
   };
 
+  const updateRoutineState = (nextIdx: number) => {
+    if (!routineId) return;
+    const isFinished = nextIdx >= ROUTINE_STAGES.length - 1;
+    const currentStepKey = ROUTINE_STAGES[currentStageIndex].key;
+    const nextStepKey = isFinished ? null : ROUTINE_STAGES[nextIdx].key;
+
+    fetch("/api/sales/routine", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ routineId, currentStepKey, nextStepKey, isFinished })
+    }).catch(console.error);
+    
+    if (isFinished) {
+      setIsRoutineFinished(true);
+    }
+  };
+
   const autoAdvanceStage = (fromIdx: number, queue: ActionItem[]) => {
     for (let i = fromIdx + 1; i < ROUTINE_STAGES.length; i++) {
       const st = ROUTINE_STAGES[i];
       if (st.key === "FIN") {
         setCurrentStageIndex(i);
+        updateRoutineState(i);
         return;
       }
       const hasItems = queue.some((a) => a.stepCategory === st.key);
       if (hasItems) {
         setCurrentStageIndex(i);
+        updateRoutineState(i);
         setActiveActionIndex(0);
         const first = queue.find((a) => a.stepCategory === st.key);
         setEditingMessage(first?.suggestedMessage || "");
@@ -304,6 +345,7 @@ export default function CommercialHomePage() {
       }
     }
     setCurrentStageIndex(ROUTINE_STAGES.length - 1);
+    updateRoutineState(ROUTINE_STAGES.length - 1);
   };
 
   return (

@@ -367,7 +367,8 @@ export default function ConversationsPage() {
         .select("organization_id, role")
         .eq("user_id", user.id)
         .is("deleted_at", null)
-        .limit(1);
+      .order("created_at", { ascending: true })
+        .order("created_at", { ascending: true }).limit(1);
 
       if (roleData && roleData.length > 0) {
         orgId = roleData[0].organization_id;

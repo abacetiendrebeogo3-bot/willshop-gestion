@@ -48,7 +48,8 @@ export class SupabaseOrganizationRepository implements IOrganizationRepository {
       .from('user_organization_roles')
       .select('user_id, organization_id, role, permissions')
       .eq('user_id', userId)
-      .is('deleted_at', null);
+      .is('deleted_at', null)
+      .order("created_at", { ascending: true });
 
     if (error || !data) return [];
     return data.map((r) => ({

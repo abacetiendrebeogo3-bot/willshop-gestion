@@ -29,7 +29,8 @@ export default function LandingPage() {
             .select("role")
             .eq("user_id", user.id)
             .is("deleted_at", null)
-            .limit(1);
+      .order("created_at", { ascending: true })
+            .order("created_at", { ascending: true }).limit(1);
 
           const userRole = roles && roles.length > 0 ? roles[0].role : "COMMERCIAL";
           if (userRole === "COMMERCIAL" || userRole === "SALES") {

@@ -35,7 +35,8 @@ export function Navbar() {
             .from("user_organization_roles")
             .select("role")
             .eq("user_id", user.id)
-            .is("deleted_at", null);
+            .is("deleted_at", null)
+      .order("created_at", { ascending: true });
 
           if (roleRows && roleRows.length > 0) {
             const r = roleRows[0].role;
