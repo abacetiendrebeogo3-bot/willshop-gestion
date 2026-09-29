@@ -331,7 +331,8 @@ export default function BiAnalyticsPage() {
       "Indicateur,Valeur\n" +
       "Chiffre d'affaires," + totalRevenue + "\n" +
       "Commandes Livrées," + deliveredOrdersCount + "\n" +
-      "Panier Moyen," + avgOrderValue;
+      "Nouveaux Clients," + newCustomersCount + "\n" +
+      "Taux de succès," + deliverySuccessRate + "%";
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
