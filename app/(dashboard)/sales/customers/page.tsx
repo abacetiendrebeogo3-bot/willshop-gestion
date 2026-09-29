@@ -251,10 +251,30 @@ export default function CustomersCRMPage() {
     setCustomerMessages([]);
     try {
       const supabase = createClient();
+      let targetOrgId = orgId;
+      if (!targetOrgId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: roleData } = await supabase
+            .from("user_organization_roles")
+            .select("organization_id")
+            .eq("user_id", user.id)
+            .is("deleted_at", null)
+            .order("created_at", { ascending: true })
+            .limit(1);
+          if (roleData && roleData.length > 0) targetOrgId = roleData[0].organization_id;
+        }
+      }
+
+      if (!targetOrgId) {
+        throw new Error("Organisation introuvable");
+      }
+
       const { data } = await supabase
         .from("conversations")
         .select("id")
         .eq("customer_id", customerId)
+        .eq("organization_id", targetOrgId)
         .neq("status", "ARCHIVED")
         .order("last_message_at", { ascending: false })
         .limit(1)

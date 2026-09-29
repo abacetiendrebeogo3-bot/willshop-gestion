@@ -238,14 +238,34 @@ export default function ConversationsCRMPage() {
   // Load chat messages when selecting a conversation
   useEffect(() => {
     if (selectedConv) {
-      setChatMessages([
-        {
-          id: "m-init",
-          sender: "CLIENT",
-          text: selectedConv.lastMessage,
-          time: selectedConv.time || "Maintenant",
-        },
-      ]);
+      const fetchMessages = async () => {
+        const supabase = createClient();
+        const { data: msgsData } = await supabase
+          .from("messages")
+          .select("*")
+          .eq("conversation_id", selectedConv.id)
+          .order("created_at", { ascending: true });
+          
+        if (msgsData && msgsData.length > 0) {
+          const formatted = msgsData.map((m: any) => ({
+            id: m.id,
+            sender: m.direction === "INBOUND" ? "CLIENT" : "COMMERCIAL",
+            text: m.content || "Média",
+            time: new Date(m.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
+          }));
+          setChatMessages(formatted as any);
+        } else {
+          setChatMessages([
+            {
+              id: "m-init",
+              sender: "CLIENT",
+              text: selectedConv.lastMessage || "Aucun message récent",
+              time: selectedConv.time || "Maintenant",
+            },
+          ]);
+        }
+      };
+      fetchMessages();
     }
   }, [selectedConv]);
 
