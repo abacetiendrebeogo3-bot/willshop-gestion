@@ -169,10 +169,14 @@ export async function middleware(request: NextRequest) {
     }
 
     // 2. Authenticated user
-    const role = await getUserRole(session.userId, request);
+    let role = request.cookies.get('willshop_role')?.value;
+    
+    if (!role || role === 'UNAUTHORIZED') {
+      role = await getUserRole(session.userId, request);
+    }
 
     if (role === 'UNAUTHORIZED') {
-      if (!isAuthRoute) {
+      if (!isAuthRoute && pathname !== '/workspace-select') {
         const loginUrl = new URL('/login', request.url);
         return NextResponse.redirect(loginUrl);
       }
