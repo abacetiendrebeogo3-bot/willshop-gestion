@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 import { TrendingUp, Users, ShoppingCart, Target } from "lucide-react";
@@ -24,8 +24,8 @@ export default function SalesDashboardPage() {
         ].map((stat, i) => (
           <div key={i} className="bg-white p-5 rounded-3xl border border-[#EBE5DA] shadow-2xs">
             <div className="flex items-center gap-3 mb-3">
-              <div className={w-10 h-10 rounded-2xl flex items-center justify-center }>
-                <stat.icon className={w-5 h-5 } />
+              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${stat.bg}`}>
+                <stat.icon className={`w-5 h-5 ${stat.color}`} />
               </div>
               <h3 className="text-xs font-bold text-stone-500 uppercase">{stat.title}</h3>
             </div>
@@ -35,7 +35,7 @@ export default function SalesDashboardPage() {
       </div>
 
       <div className="bg-white rounded-3xl border border-[#EBE5DA] p-8 text-center text-stone-500">
-        <p>Le d�tail du pipeline de vente et des performances des commerciaux s'affichera ici.</p>
+        <p>Le détail du pipeline de vente et des performances des commerciaux s'affichera ici.</p>
       </div>
     </div>
   );

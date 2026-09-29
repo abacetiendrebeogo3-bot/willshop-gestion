@@ -1,4 +1,4 @@
-"use client";
+ï»¿"use client";
 
 import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
@@ -75,11 +75,11 @@ export default function CustomersCRMPage() {
       if (custData) {
         const formatted = custData.map((c: any) => ({
           id: c.id,
-          name: c.first_name ? \\ \\.trim() : c.phone || "Client Inconnu",
+          name: c.first_name ? `${c.first_name} ${c.last_name || ""}`.trim() : c.phone || "Client Inconnu",
           first_name: c.first_name,
           last_name: c.last_name,
           phone: c.phone || c.whatsapp_phone || "",
-          city: c.city || c.address || "Non renseignée",
+          city: c.city || c.address || "Non renseignÃ©e",
           status: c.status === "NEW" ? "PROSPECT" : c.status === "ACTIVE" ? "ACTIVE" : "TO_RELANCE",
           createdAt: c.created_at,
           ordersCount: 0,
@@ -133,10 +133,10 @@ export default function CustomersCRMPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "ACTIVE": return { label: "Client actif", style: "bg-emerald-100 text-emerald-800 border-emerald-200" };
-      case "TO_RELANCE": return { label: "À relancer", style: "bg-rose-100 text-rose-800 border-rose-200" };
+      case "TO_RELANCE": return { label: "Ã€ relancer", style: "bg-rose-100 text-rose-800 border-rose-200" };
       case "PROSPECT": return { label: "Prospect", style: "bg-blue-100 text-blue-800 border-blue-200" };
-      case "INTERESTED": return { label: "Intéressé", style: "bg-amber-100 text-amber-800 border-amber-200" };
-      case "HOT": return { label: "Très intéressé", style: "bg-purple-100 text-purple-800 border-purple-200" };
+      case "INTERESTED": return { label: "IntÃ©ressÃ©", style: "bg-amber-100 text-amber-800 border-amber-200" };
+      case "HOT": return { label: "TrÃ¨s intÃ©ressÃ©", style: "bg-purple-100 text-purple-800 border-purple-200" };
       default: return { label: "Client", style: "bg-stone-100 text-stone-800 border-stone-200" };
     }
   };
@@ -167,7 +167,7 @@ export default function CustomersCRMPage() {
             </span>
           </div>
           <p className="text-stone-500 text-sm mt-1">
-            Tous vos clients, prospects et conversations WhatsApp centralisés
+            Tous vos clients, prospects et conversations WhatsApp centralisÃ©s
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -188,13 +188,13 @@ export default function CustomersCRMPage() {
           { label: "Total clients", val: totalClients, icon: Users, color: "text-blue-600", bg: "bg-blue-50", badge: "+12%" },
           { label: "Clients actifs", val: activeClients, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50", badge: "+5%" },
           { label: "Avec conversations", val: withConvs, icon: MessageSquare, color: "text-stone-600", bg: "bg-stone-100", badge: "Stable" },
-          { label: "À relancer", val: toRelance, icon: Clock, color: "text-rose-600", bg: "bg-rose-50", badge: "+2" },
-          { label: "Très intéressés", val: hotClients, icon: Star, color: "text-purple-600", bg: "bg-purple-50", badge: "+8%" },
+          { label: "Ã€ relancer", val: toRelance, icon: Clock, color: "text-rose-600", bg: "bg-rose-50", badge: "+2" },
+          { label: "TrÃ¨s intÃ©ressÃ©s", val: hotClients, icon: Star, color: "text-purple-600", bg: "bg-purple-50", badge: "+8%" },
         ].map((kpi, i) => (
           <div key={i} className="bg-white p-4 rounded-3xl border border-[#EBE5DA] shadow-2xs flex flex-col justify-between h-28">
             <div className="flex justify-between items-start">
-              <div className={\w-8 h-8 rounded-full \ flex items-center justify-center\}>
-                <kpi.icon className={\w-4 h-4 \\} />
+              <div className={`w-8 h-8 rounded-full ${kpi.bg} flex items-center justify-center`}>
+                <kpi.icon className={`w-4 h-4 ${kpi.color}`} />
               </div>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-600">
                 {kpi.badge}
@@ -214,14 +214,14 @@ export default function CustomersCRMPage() {
           <Search className="w-4 h-4 absolute left-3 top-3 text-stone-400" />
           <input
             type="text"
-            placeholder="Rechercher nom, email ou téléphone..."
+            placeholder="Rechercher nom, email ou tÃ©lÃ©phone..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             className="w-full bg-[#F8F5EE] border border-transparent rounded-xl pl-9 pr-3 py-2 text-xs font-medium focus:bg-white focus:border-[#800020] outline-none transition-all"
           />
         </div>
         <div className="flex gap-2">
-          {["Tous les statuts", "Toutes les villes", "Tous les commerciaux", "Toutes les périodes"].map((f, i) => (
+          {["Tous les statuts", "Toutes les villes", "Tous les commerciaux", "Toutes les pÃ©riodes"].map((f, i) => (
             <button key={i} className="px-3 py-2 bg-white border border-[#EBE5DA] rounded-xl text-[11px] font-bold text-stone-600 flex items-center gap-2 hover:bg-stone-50">
               {f} <ChevronDown className="w-3 h-3" />
             </button>
@@ -236,12 +236,12 @@ export default function CustomersCRMPage() {
             <thead>
               <tr className="bg-[#F8F5EE] border-b border-[#EBE5DA] text-[10px] font-black text-stone-500 uppercase tracking-wider">
                 <th className="px-4 py-3">Nom</th>
-                <th className="px-4 py-3">Téléphone</th>
+                <th className="px-4 py-3">TÃ©lÃ©phone</th>
                 <th className="px-4 py-3">Ville</th>
                 <th className="px-4 py-3">Statut</th>
-                <th className="px-4 py-3">Dernière activité</th>
+                <th className="px-4 py-3">DerniÃ¨re activitÃ©</th>
                 <th className="px-4 py-3 text-center">Cmds</th>
-                <th className="px-4 py-3 text-right">Dépensé</th>
+                <th className="px-4 py-3 text-right">DÃ©pensÃ©</th>
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
@@ -265,7 +265,7 @@ export default function CustomersCRMPage() {
                     </td>
                     <td className="px-4 py-3 text-xs text-stone-600 font-medium">{cust.city}</td>
                     <td className="px-4 py-3">
-                      <span className={\px-2.5 py-1 rounded-full text-[10px] font-extrabold border \\}>
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border ${badge.style}`}>
                         {badge.label}
                       </span>
                     </td>
@@ -287,9 +287,9 @@ export default function CustomersCRMPage() {
           </table>
         </div>
         <div className="px-4 py-3 border-t border-[#EBE5DA] bg-[#F8F5EE] flex items-center justify-between text-[11px] font-bold text-stone-500">
-          <span>Affichage de 1 à {customers.length} sur {customers.length}</span>
+          <span>Affichage de 1 Ã  {customers.length} sur {customers.length}</span>
           <div className="flex gap-1">
-            <button className="px-2 py-1 border border-[#EBE5DA] bg-white rounded hover:bg-stone-50 text-stone-400">Préc</button>
+            <button className="px-2 py-1 border border-[#EBE5DA] bg-white rounded hover:bg-stone-50 text-stone-400">PrÃ©c</button>
             <button className="px-2 py-1 border border-[#EBE5DA] bg-white rounded hover:bg-stone-50 text-[#1F1917]">1</button>
             <button className="px-2 py-1 border border-[#EBE5DA] bg-white rounded hover:bg-stone-50 text-stone-400">Suiv</button>
           </div>
@@ -315,7 +315,7 @@ export default function CustomersCRMPage() {
                 <div>
                   <h2 className="text-xl font-black text-[#1F1917]">{selectedCustomer.name}</h2>
                   <div className="mt-1">
-                    <span className={\px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border \\}>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${getStatusBadge(selectedCustomer.status).style}`}>
                       {getStatusBadge(selectedCustomer.status).label}
                     </span>
                   </div>
@@ -333,7 +333,7 @@ export default function CustomersCRMPage() {
                   <button
                     key={t.id}
                     onClick={() => setActiveTab(t.id as any)}
-                    className={\pb-3 px-1 border-b-2 transition-colors \\}
+                    className={`pb-3 px-1 border-b-2 transition-colors ${activeTab === t.id ? "border-[#800020] text-[#800020]" : "border-transparent text-stone-500 hover:text-[#1F1917]"}`}
                   >
                     {t.label}
                   </button>
@@ -345,16 +345,16 @@ export default function CustomersCRMPage() {
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {activeTab === "INFO" && (
                 <>
-                  {/* Coordonnées */}
+                  {/* CoordonnÃ©es */}
                   <div className="bg-white rounded-2xl p-5 border border-[#EBE5DA] shadow-2xs space-y-4">
-                    <h3 className="text-xs font-black text-[#1F1917] uppercase tracking-wider mb-2">Coordonnées</h3>
+                    <h3 className="text-xs font-black text-[#1F1917] uppercase tracking-wider mb-2">CoordonnÃ©es</h3>
                     <div className="flex items-center gap-3 text-sm">
                       <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center"><Phone className="w-4 h-4 text-emerald-600" /></div>
                       <span className="font-mono font-bold text-stone-700">{selectedCustomer.phone}</span>
                     </div>
                     <div className="flex items-center gap-3 text-sm">
                       <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center"><Mail className="w-4 h-4 text-blue-600" /></div>
-                      <span className="font-medium text-stone-500 italic">Non renseigné</span>
+                      <span className="font-medium text-stone-500 italic">Non renseignÃ©</span>
                     </div>
                     <div className="flex items-center gap-3 text-sm">
                       <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center"><MapPin className="w-4 h-4 text-stone-600" /></div>
@@ -371,7 +371,7 @@ export default function CustomersCRMPage() {
                     </div>
                     <div className="bg-white rounded-2xl p-4 border border-[#EBE5DA] shadow-2xs text-center">
                       <TrendingUp className="w-5 h-5 text-[#800020] mx-auto mb-2" />
-                      <p className="text-[10px] text-stone-500 font-bold uppercase">Total Dépensé</p>
+                      <p className="text-[10px] text-stone-500 font-bold uppercase">Total DÃ©pensÃ©</p>
                       <p className="text-lg font-black text-[#1F1917]">{selectedCustomer.totalSpent} F</p>
                     </div>
                   </div>
@@ -398,14 +398,14 @@ export default function CustomersCRMPage() {
                       <button className="text-stone-400 hover:text-[#800020]"><Edit3 className="w-4 h-4" /></button>
                     </div>
                     <p className="text-xs text-stone-500 leading-relaxed italic">
-                      Aucune note sur ce client pour le moment. Cliquez sur l'icône pour en ajouter.
+                      Aucune note sur ce client pour le moment. Cliquez sur l'icÃ´ne pour en ajouter.
                     </p>
                   </div>
                 </>
               )}
               {activeTab !== "INFO" && (
                 <div className="text-center py-10 text-stone-400 text-xs font-bold">
-                  Contenu de l'onglet {activeTab} à venir.
+                  Contenu de l'onglet {activeTab} Ã  venir.
                 </div>
               )}
             </div>
@@ -415,9 +415,9 @@ export default function CustomersCRMPage() {
               <button
                 onClick={() => {
                   if (customerConvId) {
-                    router.push(\/whatsapp?conv=\\);
+                    router.push(`/whatsapp?conv=${customerConvId}`);
                   } else {
-                    showToast("Aucune conversation trouvée pour ce client");
+                    showToast("Aucune conversation trouvÃ©e pour ce client");
                   }
                 }}
                 className="w-full bg-[#800020] hover:bg-[#660019] text-white py-3.5 rounded-xl text-xs font-black shadow-lg shadow-[#800020]/20 flex items-center justify-center gap-2 transition-all"
