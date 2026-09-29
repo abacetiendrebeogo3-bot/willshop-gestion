@@ -3,6 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import React, { useState } from "react";
+import { PageTransition } from "@/components/animations/PageTransition";
 import Link from "next/link";
 import {
   Truck,

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { PageTransition } from "@/components/animations/PageTransition";
 import { createClient } from "@/src/infrastructure/supabase/client";
 import { DataSourceBadge } from "@/components/ui/data-source-badge";
 import {

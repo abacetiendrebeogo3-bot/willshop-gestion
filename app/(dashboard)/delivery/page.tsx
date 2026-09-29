@@ -3,6 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { PageTransition } from "@/components/animations/PageTransition";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/src/infrastructure/supabase/client";
@@ -533,7 +534,7 @@ export default function DeliveryManagementPage() {
       {/* DELIVERIES TABLE (Matching Screenshot 1:1 Pixel-Perfect) */}
       <div className="bg-white rounded-3xl border border-gray-200 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+          <table className="w-full text-left text-xs border-collapse min-w-[800px]">
             <thead>
               <tr className="bg-gray-50/80 text-gray-500 font-bold border-b border-gray-200 text-[11px]">
                 <th className="p-4"># Commande</th>

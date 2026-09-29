@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { PageTransition } from "@/components/animations/PageTransition";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {

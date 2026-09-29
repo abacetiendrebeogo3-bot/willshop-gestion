@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { PageTransition } from "@/components/animations/PageTransition";
 import Link from "next/link";
 import { createClient } from "@/src/infrastructure/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -1461,7 +1462,7 @@ export default function AIAgentsConfigPage() {
                     </div>
                   ) : (
                     <div className="overflow-x-auto border border-[#282838] rounded-2xl">
-                      <table className="w-full text-left text-xs font-sans">
+                      <table className="w-full text-left text-xs font-sans min-w-[800px]">
                         <thead className="bg-[#14141E] text-gray-400 uppercase font-mono text-[11px] border-b border-[#282838]">
                           <tr>
                             <th className="p-3.5">Zone</th>

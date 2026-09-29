@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { PageTransition } from "@/components/animations/PageTransition";
 import { createClient } from "@/src/infrastructure/supabase/client";
 import {
   Search,
@@ -1336,7 +1337,7 @@ export default function ConversationsPage() {
       {/* ── CUSTOMER DETAILS DRAWER ────────────────────────────────────────── */}
       {showCustomerDrawer && (
         <div className="fixed inset-0 z-[100] flex justify-end bg-black/40 backdrop-blur-xs animate-fade-in">
-          <div className="w-full max-w-md bg-[#FAF8F5] h-full shadow-2xl flex flex-col overflow-hidden">
+          <div className="w-full md:max-w-md bg-[#FAF8F5] h-full shadow-2xl flex flex-col overflow-hidden">
 
             {/* Drawer Header */}
             <div className="px-5 py-4 bg-white border-b border-[#EBE5DA] flex items-center justify-between">

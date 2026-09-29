@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { PageTransition } from "@/components/animations/PageTransition";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Card, Badge, Button } from "@/components/ui/card";
@@ -535,7 +536,7 @@ export default function ProductDetailPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs font-mono">
+              <table className="w-full text-left text-xs font-mono min-w-[800px]">
                 <thead className="bg-slate-900/80 text-slate-400 border-b border-slate-800">
                   <tr>
                     <th className="p-2.5">TYPE</th>
@@ -581,7 +582,7 @@ export default function ProductDetailPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs font-mono">
+            <table className="w-full text-left text-xs font-mono min-w-[800px]">
               <thead className="bg-slate-900/80 text-slate-400 border-b border-slate-800">
                 <tr>
                   <th className="p-2.5">N° COMMANDE</th>

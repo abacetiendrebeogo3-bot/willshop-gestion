@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { PageTransition } from "@/components/animations/PageTransition";
 import {
   Zap,
   CheckCircle2,

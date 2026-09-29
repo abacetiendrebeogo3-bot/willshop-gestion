@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import React, { useState, useMemo, useEffect } from "react";
+import { PageTransition } from "@/components/animations/PageTransition";
 import Link from "next/link";
 import { createClient } from "@/src/infrastructure/supabase/client";
 import {
@@ -232,7 +233,7 @@ export default function CustomersCRMPage() {
       {/* TABLE */}
       <div className="bg-white rounded-3xl border border-[#EBE5DA] shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
               <tr className="bg-[#F8F5EE] border-b border-[#EBE5DA] text-[10px] font-black text-stone-500 uppercase tracking-wider">
                 <th className="px-4 py-3">Nom</th>
@@ -299,7 +300,7 @@ export default function CustomersCRMPage() {
       {/* SLIDE-OVER CUSTOMER PANEL */}
       {selectedCustomer && (
         <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm animate-fade-in" onClick={closePanel} />
+          <div className="w-full absolute inset-0 bg-black/30 backdrop-blur-sm animate-fade-in" onClick={closePanel} />
           
           <div className="relative w-full max-w-md bg-[#F8F5EE] h-full shadow-2xl animate-slide-in-right flex flex-col border-l border-[#EBE5DA]">
             {/* Panel Header */}

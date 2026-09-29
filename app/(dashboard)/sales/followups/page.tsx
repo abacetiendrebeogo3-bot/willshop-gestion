@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { PageTransition } from "@/components/animations/PageTransition";
 import Link from "next/link";
 import { createClient } from "@/src/infrastructure/supabase/client";
 import { DataSourceBadge } from "@/components/ui/data-source-badge";
@@ -1036,7 +1037,7 @@ export default function FollowupsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs font-mono">
+            <table className="w-full text-left text-xs font-mono min-w-[800px]">
               <thead className="bg-[#0A0A14] text-gray-400 border-b border-[#181824]">
                 <tr>
                   <th className="p-3">NOM DE LA RÈGLE</th>

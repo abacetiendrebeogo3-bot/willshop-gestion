@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import React from "react";
+import { PageTransition } from "@/components/animations/PageTransition";
 import { TrendingUp, Users, ShoppingCart, Target } from "lucide-react";
 
 export default function SalesDashboardPage() {

@@ -1,4 +1,5 @@
-import type { Metadata, Viewport } from "next";
+﻿import type { Metadata, Viewport } from "next";
+import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Navbar } from "@/components/layout/Navbar";
@@ -6,6 +7,9 @@ import { SidebarProvider } from "@/src/context/SidebarContext";
 import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
 import { PwaInstallPrompt } from "@/components/pwa/PwaInstallPrompt";
 import { FloatingAIAssistant } from "@/components/ai/FloatingAIAssistant";
+
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
+const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-serif", style: ["normal", "italic"] });
 
 export const viewport: Viewport = {
   themeColor: "#800020",
@@ -43,7 +47,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className="light">
+    <html lang="fr" className={`light ${inter.variable} ${playfair.variable}`}>
       <body className="bg-[#F8F5EE] text-[#1F1917] antialiased flex min-h-screen font-sans">
         <SidebarProvider>
           <Sidebar />

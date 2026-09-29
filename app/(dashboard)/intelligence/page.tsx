@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { PageTransition } from "@/components/animations/PageTransition";
 import {
   BrainCircuit,
   Sparkles,
