@@ -340,9 +340,8 @@ export default function ConversationsPage() {
       setMemberPhone("");
       setMemberName("");
       setMemberRole("COMMERCIAL");
-    } catch (_err: any) {
-      showToast(`✓ Membre ${memberPhone.trim()} invité !`);
-      setShowAddMemberModal(false);
+    } catch (err: any) {
+      showToast(`Erreur: ${err.message || "Impossible d'inviter le membre"}`);
     } finally {
       setIsSubmittingMember(false);
     }
@@ -803,8 +802,8 @@ export default function ConversationsPage() {
           )
         );
       }
-    } catch (_err) {
-      showToast("✓ Message enregistré");
+    } catch (err: any) {
+      showToast(`Erreur d'envoi: ${err.message || "Erreur"}`);
     } finally {
       setIsSending(false);
     }
