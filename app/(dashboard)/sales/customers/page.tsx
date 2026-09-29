@@ -83,8 +83,7 @@ export default function CustomersCRMPage() {
         .select("organization_id")
         .eq("user_id", user.id)
         .is("deleted_at", null)
-      .order("created_at", { ascending: true })
-        .order("created_at", { ascending: true }).limit(1);
+      .order("created_at", { ascending: true }).limit(1);
 
       const activeOrgId = roleData && roleData.length > 0 ? roleData[0].organization_id : null;
       setOrgId(activeOrgId);
@@ -179,8 +178,7 @@ export default function CustomersCRMPage() {
             .select("organization_id")
             .eq("user_id", user.id)
             .is("deleted_at", null)
-      .order("created_at", { ascending: true })
-            .order("created_at", { ascending: true }).limit(1);
+      .order("created_at", { ascending: true }).limit(1);
           if (roleData && roleData.length > 0) targetOrgId = roleData[0].organization_id;
         }
       }
@@ -297,8 +295,7 @@ export default function CustomersCRMPage() {
             .select("organization_id")
             .eq("user_id", user.id)
             .is("deleted_at", null)
-      .order("created_at", { ascending: true })
-            .order("created_at", { ascending: true }).limit(1);
+      .order("created_at", { ascending: true }).limit(1);
           if (roleData && roleData.length > 0) targetOrgId = roleData[0].organization_id;
         }
       }

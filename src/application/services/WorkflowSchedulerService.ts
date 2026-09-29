@@ -197,8 +197,7 @@ export class WorkflowSchedulerService {
             .eq('organization_id', orgId)
             .eq('role', 'COMMERCIAL')
             .is('deleted_at', null)
-      .order("created_at", { ascending: true })
-            .order("created_at", { ascending: true }).limit(1);
+      .order("created_at", { ascending: true }).limit(1);
           assignedUserId = roles?.[0]?.user_id || null;
         }
 

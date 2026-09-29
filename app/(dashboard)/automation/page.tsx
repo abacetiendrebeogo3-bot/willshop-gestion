@@ -57,8 +57,7 @@ export default function AutomationDashboardPage() {
         .select("organization_id")
         .eq("user_id", user.id)
         .is("deleted_at", null)
-      .order("created_at", { ascending: true })
-        .order("created_at", { ascending: true }).limit(1);
+      .order("created_at", { ascending: true }).limit(1);
 
       const currentOrgId = roleData && roleData.length > 0 ? roleData[0].organization_id : null;
       setOrgId(currentOrgId);

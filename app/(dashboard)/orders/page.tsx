@@ -73,8 +73,7 @@ export default function OrdersListPage() {
         .select("organization_id")
         .eq("user_id", user.id)
         .is("deleted_at", null)
-      .order("created_at", { ascending: true })
-        .order("created_at", { ascending: true }).limit(1);
+      .order("created_at", { ascending: true }).limit(1);
 
       const orgId = roleData && roleData.length > 0 ? roleData[0].organization_id : null;
       if (!orgId) {

@@ -67,8 +67,7 @@ export default function LoginPage() {
             .select("role")
             .eq("user_id", user.id)
             .is("deleted_at", null)
-      .order("created_at", { ascending: true })
-            .order("created_at", { ascending: true }).limit(1);
+      .order("created_at", { ascending: true }).limit(1);
 
           if (roles && roles.length > 0) {
             const userRole = roles[0].role;
@@ -190,8 +189,7 @@ export default function LoginPage() {
             .select("role")
             .eq("user_id", sessionUser.id)
             .is("deleted_at", null)
-      .order("created_at", { ascending: true })
-            .order("created_at", { ascending: true }).limit(1);
+      .order("created_at", { ascending: true }).limit(1);
 
           if (roles && roles.length > 0) {
             const userRole = roles[0].role;
