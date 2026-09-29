@@ -1051,7 +1051,7 @@ export default function ConversationsPage() {
                   <button
                     key={tag}
                     onClick={() => setActiveTag(tag)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-200 border ${
+                    className={`flex items-center shrink-0 gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-200 border ${
                       isActive
                         ? `${cfg.bg} text-white border-transparent shadow-xs`
                         : `bg-white text-stone-600 border-[#EBE5DA] hover:border-[#800020]/30`
@@ -1144,7 +1144,7 @@ export default function ConversationsPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-0.5">
                           <span className="font-bold text-sm text-[#1F1917] truncate">{conv.customerName}</span>
-                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                          <div className="flex items-center shrink-0 gap-1.5 shrink-0 ml-2">
                             <span className="text-[11px] text-stone-400 font-medium">{conv.time}</span>
                             {conv.unreadCount > 0 && (
                               <span className="w-5 h-5 rounded-full bg-[#800020] text-white text-[10px] font-black flex items-center justify-center">
@@ -1405,7 +1405,7 @@ export default function ConversationsPage() {
                           {/* Delivery info */}
                           {ord.delivery && (
                             <div className="mt-2 pt-2 border-t border-stone-100 text-[11px] space-y-1 text-stone-600">
-                              <p className="flex items-center gap-1.5 font-semibold text-emerald-700">
+                              <p className="flex items-center shrink-0 gap-1.5 font-semibold text-emerald-700">
                                 <Truck className="w-3.5 h-3.5" />
                                 <span>Livraison : {ord.delivery.status}</span>
                               </p>
@@ -1477,79 +1477,7 @@ export default function ConversationsPage() {
         </div>
       )}
 
-      {/* ── FLOATING ASSISTANT BUTTON ─────────────────────────────────────── */}
-      <div className="fixed bottom-20 right-5 z-40">
-        <button
-          onClick={() => { setShowAssistant(true); setAssistantHasSuggestion(false); }}
-          className="relative w-14 h-14 rounded-full bg-[#800020] text-white shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-200 flex items-center justify-center border-2 border-amber-300"
-        >
-          <Bot className="w-7 h-7" />
-          {assistantHasSuggestion && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-400 border-2 border-white animate-pulse" />
-          )}
-        </button>
-      </div>
-
-      {/* ── ASSISTANT OVERLAY ─────────────────────────────────────────────── */}
-      {showAssistant && (
-        <div className="fixed inset-0 z-[110] flex items-end justify-center sm:items-center p-4 bg-black/40 backdrop-blur-xs animate-fade-in">
-          <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-[#EBE5DA] overflow-hidden flex flex-col max-h-[80vh]">
-            <div className="p-4 bg-[#800020] text-white flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Bot className="w-5 h-5 text-amber-300" />
-                <h3 className="font-black text-sm">Assistant Commercial WILLShop IA</h3>
-              </div>
-              <button onClick={() => setShowAssistant(false)} className="p-1 rounded-lg hover:bg-white/20 text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#FAF8F5]">
-              {assistantMessages.map((m, idx) => (
-                <div key={idx} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-xs leading-relaxed ${
-                    m.role === "user" ? "bg-[#1F1917] text-white" : "bg-white text-[#1F1917] border border-[#EBE5DA] shadow-2xs font-medium"
-                  }`}>
-                    {m.text}
-                  </div>
-                </div>
-              ))}
-              <div ref={assistantEndRef} />
-            </div>
-
-            <div className="p-3 bg-white border-t border-[#EBE5DA] space-y-2">
-              <div className="flex flex-wrap gap-1.5">
-                {["Qui dois-je relancer ?", "Intentions de commande", "Conversations non lues"].map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => handleAssistantSend(s)}
-                    className="px-2.5 py-1 bg-[#FAF8F5] border border-[#EBE5DA] rounded-lg text-[11px] font-bold text-stone-700 hover:bg-stone-100 transition-colors"
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="Posez une question sur vos conversations..."
-                  value={assistantQuery}
-                  onChange={(e) => setAssistantQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAssistantSend()}
-                  className="flex-1 bg-[#FAF8F5] border border-[#EBE5DA] rounded-xl px-3 py-2 text-xs text-[#1F1917] outline-none"
-                />
-                <button
-                  onClick={() => handleAssistantSend()}
-                  className="px-3 py-2 bg-[#800020] text-white rounded-xl text-xs font-bold hover:bg-[#660019]"
-                >
-                  Envoyer
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ── ASSISTANT OVERLAY REMOVED (Handled Globally) ──────────────────── */}
 
       {/* ── QR CODE MODAL ─────────────────────────────────────────────────── */}
       {showQrModal && (
