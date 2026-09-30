@@ -476,7 +476,7 @@ export class WhatsAppApplicationService {
 
     // 4. Lookup or Create Single Active Conversation per Customer
     let conversationId = '';
-    let conversationMode: 'FOLLOWUP_ONLY' | 'HUMAN_PRIMARY' | 'AI_ACTIVE' | 'HUMAN_ACTIVE' | 'ESCALATED' | 'PAUSED' = 'FOLLOWUP_ONLY';
+    let conversationMode: 'AI_ACTIVE' | 'HUMAN_ACTIVE' | 'ESCALATED' | 'PAUSED' = 'AI_ACTIVE';
 
     const { data: existingConvs } = await this.supabase
       .from('conversations')
@@ -491,7 +491,7 @@ export class WhatsAppApplicationService {
 
     if (existingConv) {
       conversationId = existingConv.id;
-      conversationMode = (existingConv.conversation_mode as any) || 'FOLLOWUP_ONLY';
+      conversationMode = (existingConv.conversation_mode as any) || 'AI_ACTIVE';
 
       const nowIso = new Date().toISOString();
       const updatedMeta = {
@@ -506,7 +506,7 @@ export class WhatsAppApplicationService {
         .update({ last_message_at: nowIso, status: 'OPEN', metadata: updatedMeta, unread_count: newUnreadCount })
         .eq('id', conversationId);
     } else {
-      const initialMode = event.fromMe ? 'HUMAN_PRIMARY' : 'FOLLOWUP_ONLY';
+      const initialMode = event.fromMe ? 'HUMAN_ACTIVE' : 'AI_ACTIVE';
       try {
         const nowIso = new Date().toISOString();
         const { data: newConv } = await this.supabase
@@ -542,7 +542,7 @@ export class WhatsAppApplicationService {
 
         if (retryConv) {
           conversationId = retryConv.id;
-          conversationMode = (retryConv.conversation_mode as any) || 'FOLLOWUP_ONLY';
+          conversationMode = (retryConv.conversation_mode as any) || 'AI_ACTIVE';
         }
       }
     }
@@ -809,12 +809,7 @@ export class WhatsAppApplicationService {
     // 7b. Check if AI Auto-Reply is Suppressed (OBSERVE_ONLY, FOLLOWUP_ONLY, HUMAN_PRIMARY, HUMAN_ACTIVE, ESCALATED, PAUSED)
     const isOutboundSuppressed =
       !aiGuardResult.isAIOutboundAllowed ||
-      (conversationMode as string) === 'OBSERVE_ONLY' ||
-      conversationMode === 'FOLLOWUP_ONLY' ||
-      conversationMode === 'HUMAN_PRIMARY' ||
-      conversationMode === 'HUMAN_ACTIVE' ||
-      conversationMode === 'ESCALATED' ||
-      conversationMode === 'PAUSED';
+      (conversationMode as string) !== 'AI_ACTIVE';
 
     if (isOutboundSuppressed) {
       // EXCEPTION: Check if customer message explicitly confirms an order (e.g. "Oui je prends le kit")
