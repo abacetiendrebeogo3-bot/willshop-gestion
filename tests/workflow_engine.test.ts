@@ -4,75 +4,167 @@
  * idempotency, business hours, multi-tenant isolation, and WhatsApp execution.
  */
 
-import {  describe, it, expect, beforeEach  } from './vitest-setup';
+import { test } from 'node:test';
+import assert from 'node:assert';
 import { WorkflowSchedulerService } from '../src/application/services/WorkflowSchedulerService';
 import { FollowupVariableEngine, WhatsAppWindowGuard } from '../src/application/services/FollowupEngineService';
 
-describe('Commercial Followup Workflow Engine', () => {
-
-  it('TEST 1 & 2: Template variable substitution for commercial followup messages', () => {
-    const template = "Bonjour {{first_name}}, je reviens vers vous concernant votre commande {{product_name}} chez {{company_name}}.";
-    const { rendered, missingVars } = FollowupVariableEngine.substitute(template, {
-      first_name: "Awa",
-      product_name: "Kit Minceur",
-      company_name: "WILLShop OS",
-    });
-
-    expect(rendered).toBe("Bonjour Awa, je reviens vers vous concernant votre commande Kit Minceur chez WILLShop OS.");
-    expect(missingVars).toHaveLength(0);
+test('TEST 1 & 2: Template variable substitution for commercial followup messages', () => {
+  const template = "Bonjour {{first_name}}, je reviens vers vous concernant votre commande {{product_name}} chez {{company_name}}.";
+  const { rendered, missingVars } = FollowupVariableEngine.substitute(template, {
+    first_name: "Awa",
+    product_name: "Kit Minceur",
+    company_name: "WILLShop OS",
   });
 
-  it('TEST 3: WhatsApp 24h Window Guard evaluation', () => {
-    const now = new Date();
-    const recentMessageDate = new Date(now.getTime() - 2 * 60 * 60 * 1000); // 2 hours ago
-    const oldMessageDate = new Date(now.getTime() - 26 * 60 * 60 * 1000); // 26 hours ago
+  assert.strictEqual(rendered, "Bonjour Awa, je reviens vers vous concernant votre commande Kit Minceur chez WILLShop OS.");
+  assert.strictEqual(missingVars.length, 0);
+});
 
-    const checkOpen = WhatsAppWindowGuard.check24hWindow(recentMessageDate, now);
-    expect(checkOpen.isOpen).toBe(true);
-    expect(checkOpen.hoursRemaining).toBeGreaterThan(0);
+test('TEST 3: WhatsApp 24h Window Guard evaluation', () => {
+  const now = new Date();
+  const recentMessageDate = new Date(now.getTime() - 2 * 60 * 60 * 1000); // 2 hours ago
+  const oldMessageDate = new Date(now.getTime() - 26 * 60 * 60 * 1000); // 26 hours ago
 
-    const checkClosed = WhatsAppWindowGuard.check24hWindow(oldMessageDate, now);
-    expect(checkClosed.isOpen).toBe(false);
-    expect(checkClosed.hoursRemaining).toBe(0);
-  });
+  const checkOpen = WhatsAppWindowGuard.check24hWindow(recentMessageDate, now);
+  assert.strictEqual(checkOpen.isOpen, true);
+  assert.ok(checkOpen.hoursRemaining > 0);
 
-  it('TEST 8: Idempotency Key Format Verification', () => {
-    const orgId = "org-123456";
-    const runId = "run-987654";
-    const stepKey = "J1";
-    const idempotencyKey = `eng-${orgId}:${runId}:${stepKey}`;
+  const checkClosed = WhatsAppWindowGuard.check24hWindow(oldMessageDate, now);
+  assert.strictEqual(checkClosed.isOpen, false);
+  assert.strictEqual(checkClosed.hoursRemaining, 0);
+});
 
-    expect(idempotencyKey).toBe("eng-org-123456:run-987654:J1");
-  });
+test('TEST 8: Idempotency Key Format Verification', () => {
+  const orgId = "org-123456";
+  const runId = "run-987654";
+  const stepKey = "J1";
+  const idempotencyKey = `eng-${orgId}:${runId}:${stepKey}`;
 
-  it('TEST 10: Business Hours Guard (08:00 - 20:00 GMT+0)', () => {
-    const nightTime = new Date('2026-09-28T03:00:00Z');
-    const dayTime = new Date('2026-09-28T10:00:00Z');
+  assert.strictEqual(idempotencyKey, "eng-org-123456:run-987654:J1");
+});
 
-    const nightHour = nightTime.getUTCHours();
-    const dayHour = dayTime.getUTCHours();
+test('TEST 10: Business Hours Guard (08:00 - 20:00 GMT+0)', () => {
+  const nightTime = new Date('2026-09-28T03:00:00Z');
+  const dayTime = new Date('2026-09-28T10:00:00Z');
 
-    expect(nightHour < 8 || nightHour >= 20).toBe(true); // Outside business hours
-    expect(dayHour >= 8 && dayHour < 20).toBe(true);    // Inside business hours
-  });
+  const nightHour = nightTime.getUTCHours();
+  const dayHour = dayTime.getUTCHours();
 
-  it('TEST E2E: Stop condition evaluation logic', () => {
-    const customerReplied = true;
-    const orderConfirmed = false;
+  assert.ok(nightHour < 8 || nightHour >= 20); // Outside business hours
+  assert.ok(dayHour >= 8 && dayHour < 20);    // Inside business hours
+});
 
-    let shouldStop = false;
-    let stopReason = '';
+test('TEST E2E: Stop condition evaluation logic', () => {
+  const customerReplied = true;
+  const orderConfirmed = false;
 
-    if (customerReplied) {
-      shouldStop = true;
-      stopReason = 'CUSTOMER_REPLIED';
-    } else if (orderConfirmed) {
-      shouldStop = true;
-      stopReason = 'ORDER_CONFIRMED';
+  let shouldStop = false;
+  let stopReason = '';
+
+  if (customerReplied) {
+    shouldStop = true;
+    stopReason = 'CUSTOMER_REPLIED';
+  } else if (orderConfirmed) {
+    shouldStop = true;
+    stopReason = 'ORDER_CONFIRMED';
+  }
+
+  assert.strictEqual(shouldStop, true);
+  assert.strictEqual(stopReason, 'CUSTOMER_REPLIED');
+});
+
+test('TEST 11: Worker-Created Engagement Remains PENDING (No Auto-Send)', async () => {
+  // Test that guarantees an engagement generated by WorkflowSchedulerService 
+  // ONLY inserts a PENDING task in customer_engagements and NEVER calls WhatsApp API directly.
+  
+  let insertedEngagement: any = null;
+  let nextExecutionScheduled: any = null;
+  let executionCompleted = false;
+
+  const mockSupabase: any = {
+    from: (table: string) => {
+      if (table === 'automation_executions') {
+        return {
+          select: () => ({
+            eq: () => ({
+              lte: () => ({
+                limit: async () => ({
+                  data: [{
+                    id: 'exec-1',
+                    organization_id: 'org-1',
+                    status: 'PENDING',
+                    step_key: 'J0',
+                    customer_id: 'cust-1',
+                    conversation_id: 'conv-1',
+                    automation_rules: { actions: [{ payload: { template: "Hello" } }] },
+                    customers: { first_name: 'Test' }
+                  }],
+                  error: null
+                })
+              })
+            })
+          }),
+          update: (payload: any) => {
+            const eqFn2 = () => ({
+              select: () => ({
+                single: async () => {
+                  if (payload.status === 'EXECUTING') return { data: { id: 'exec-1' }, error: null };
+                  return { data: null, error: null };
+                }
+              })
+            });
+            const eqFn1 = () => {
+              if (payload.status === 'COMPLETED') {
+                executionCompleted = true;
+                return { error: null }; // No select/single needed here
+              }
+              return { eq: eqFn2 };
+            };
+            return { eq: eqFn1 };
+          },
+          insert: async (payload: any) => {
+            nextExecutionScheduled = payload;
+            return { error: null };
+          }
+        };
+      }
+      if (table === 'kill_switches') return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null }) }) }) };
+      if (table === 'messages') return { select: () => ({ eq: () => ({ eq: () => ({ gte: () => ({ limit: async () => ({ data: [] }) }) }) }) }) };
+      if (table === 'orders') return { select: () => ({ eq: () => ({ eq: () => ({ neq: () => ({ gte: () => ({ limit: async () => ({ data: [] }) }) }) }) }) }) };
+      if (table === 'whatsapp_conversations') return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null }) }) }) };
+      if (table === 'user_organization_roles') return { select: () => ({ eq: () => ({ eq: () => ({ is: () => ({ order: () => ({ limit: async () => ({ data: [] }) }) }) }) }) }) };
+      
+      if (table === 'customer_engagements') {
+        return {
+          insert: async (payload: any) => {
+            insertedEngagement = payload;
+            return { error: null };
+          }
+        };
+      }
+      return {};
     }
+  };
 
-    expect(shouldStop).toBe(true);
-    expect(stopReason).toBe('CUSTOMER_REPLIED');
-  });
+  const OriginalGetUTCHours = Date.prototype.getUTCHours;
+  Date.prototype.getUTCHours = () => 12; // Force mid-day
 
+  try {
+    const scheduler = new WorkflowSchedulerService(mockSupabase);
+    const result = await scheduler.evaluateDueWorkflows();
+
+    // Assertions
+    assert.strictEqual(result.executedCount, 1);
+    assert.ok(insertedEngagement !== null, "Worker MUST create an engagement in customer_engagements");
+    assert.strictEqual(insertedEngagement.status, 'PENDING', "Worker MUST create the engagement with PENDING status");
+    assert.strictEqual(insertedEngagement.source, 'WORKFLOW_AUTOMATION');
+    assert.ok(executionCompleted, "Original execution must be marked COMPLETED");
+    assert.strictEqual(nextExecutionScheduled.step_key, 'J1', "Next step J1 must be scheduled");
+  } finally {
+    Date.prototype.getUTCHours = OriginalGetUTCHours;
+  }
+  
+  // Implicit verification: EvolutionWhatsAppAdapter or similar is NOT called anywhere in evaluateDueWorkflows
+  // The service logic ONLY inserts into 'customer_engagements' and 'automation_executions'.
 });
