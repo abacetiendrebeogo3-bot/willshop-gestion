@@ -82,6 +82,32 @@ describe('Database RBAC & RLS Security Tests', () => {
     });
     // Since delivery 'fake-unassigned-uuid' is not assigned to this driver (or doesn't exist), it returns 403
     assert.strictEqual(res.status, 403, 'LIVREUR modifying unassigned delivery should get 403');
+  it('API: /api/team/invite should reject COMMERCIAL inviting an OWNER with 403', async () => {
+    const res = await fetch(`${apiBaseUrl}/api/team/invite`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${commercialToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: '+22670000000', email: 'owner@test.com', role: 'OWNER' })
+    });
+    // It should be 403 strictly from requireRole or from role validation
+    assert.strictEqual(res.status, 403, 'COMMERCIAL should be rejected when trying to invite an OWNER or just by accessing the route');
   });
 
+  it('API: /api/team/activate without token should return 403', async () => {
+    const res = await fetch(`${apiBaseUrl}/api/team/activate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phoneOrEmail: '+22670000000', password: 'password123', token: '' })
+    });
+    assert.strictEqual(res.status, 403, 'Activation without token should be rejected with 403');
+  });
+
+  it('API: /api/team/activate with invalid/expired token should return 403 or 404', async () => {
+    const res = await fetch(`${apiBaseUrl}/api/team/activate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phoneOrEmail: '+22670000000', password: 'password123', token: 'invalid_token_123' })
+    });
+    // Depending on logic, it could be 404 (not found) or 403 (expired/invalid)
+    assert.ok(res.status === 404 || res.status === 403, 'Activation with invalid token should be rejected');
+  });
 });

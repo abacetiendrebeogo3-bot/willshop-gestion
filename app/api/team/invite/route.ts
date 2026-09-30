@@ -7,12 +7,12 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    const { user, organizationId, role, supabaseAdmin, errorResponse } = await requireRole(request, ['OWNER', 'MANAGER']);
+    const { user, organizationId, role: currentUserRole, supabaseAdmin, errorResponse } = await requireRole(request, ['OWNER']);
     if (errorResponse) return errorResponse;
 
     // 3. Parse payload
     const body = await request.json();
-    const { phone, firstName, lastName, email, role, jobTitle } = body;
+    const { phone, firstName, lastName, email, role: requestedRole, jobTitle } = body;
 
     if (!phone || !phone.trim()) {
       return NextResponse.json(
@@ -21,10 +21,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const memberRole = (requestedRole || "COMMERCIAL").trim();
+    const allowedRoles = ["MANAGER", "COMMERCIAL", "LIVREUR"];
+    
+    if (!allowedRoles.includes(memberRole)) {
+      return NextResponse.json(
+        { error: `Rôle invalide ou non autorisé. Vous ne pouvez inviter que : ${allowedRoles.join(", ")}.` },
+        { status: 403 }
+      );
+    }
+
     const phoneClean = phone.trim();
     const fName = (firstName || "Membre").trim();
     const lName = (lastName || "").trim();
-    const memberRole = (role || "COMMERCIAL").trim();
 
     // 4. Fetch Organization Name
     const { data: org } = await supabaseAdmin

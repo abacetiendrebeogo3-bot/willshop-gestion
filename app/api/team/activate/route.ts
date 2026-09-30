@@ -43,56 +43,41 @@ export async function POST(request: NextRequest) {
     const inputTrim = phoneOrEmail.trim();
     const cleanDigits = inputTrim.replace(/[^\d]/g, "");
 
-    // 1. Search for invited employee in team_employees
-    let employee = null;
+    if (!token || token.trim() === '') {
+      return NextResponse.json(
+        { error: "Jeton d'invitation manquant. Veuillez utiliser le lien fourni." },
+        { status: 403 }
+      );
+    }
+    const cleanToken = token.trim();
 
-    // Search by exact phone, digits, or email
-    const { data: empData, error: empErr } = await supabaseAdmin
+    // 1. Search for invited employee strictly by token
+    const { data: employee, error: empErr } = await supabaseAdmin
       .from("team_employees")
       .select("*, organizations(name)")
-      .or(`phone.eq.${inputTrim},phone.eq.+${cleanDigits},phone.eq.${cleanDigits},email.eq.${inputTrim}`)
+      .eq("invitation_token", cleanToken)
       .limit(1)
       .maybeSingle();
 
-    if (empData) {
-      employee = empData;
-    } else if (cleanDigits.length >= 6) {
-      // Fuzzy search on last 8 digits of phone
-      const lastDigits = cleanDigits.slice(-8);
-      const { data: fuzzyEmp } = await supabaseAdmin
-        .from("team_employees")
-        .select("*, organizations(name)")
-        .ilike("phone", `%${lastDigits}%`)
-        .limit(1)
-        .maybeSingle();
-
-      if (fuzzyEmp) {
-        employee = fuzzyEmp;
-      }
-    }
-
     if (!employee) {
       return NextResponse.json(
-        { error: "Aucune invitation trouvée pour ce numéro de téléphone. Veuillez contacter l'administrateur." },
+        { error: "Aucune invitation valide trouvée avec ce jeton. Veuillez contacter l'administrateur." },
         { status: 404 }
       );
     }
 
-    // 2. Security Check (Fix P1): Verify invitation_token if present on employee record
-    if (employee.invitation_token) {
-      if (!token || token.trim() !== employee.invitation_token) {
-        return NextResponse.json(
-          { error: "Jeton d'invitation manquant ou invalide. Veuillez utiliser le lien d'invitation reçu sur WhatsApp." },
-          { status: 403 }
-        );
-      }
+    if (employee.user_id) {
+       return NextResponse.json(
+         { error: "Ce compte est déjà activé. Veuillez vous connecter." },
+         { status: 403 }
+       );
+    }
 
-      if (employee.invitation_expires_at && new Date(employee.invitation_expires_at) < new Date()) {
-        return NextResponse.json(
-          { error: "L'invitation a expiré (validité 72h). Veuillez demander une nouvelle invitation au gérant." },
-          { status: 403 }
-        );
-      }
+    if (!employee.invitation_expires_at || new Date(employee.invitation_expires_at) < new Date()) {
+       return NextResponse.json(
+         { error: "L'invitation a expiré (validité 72h). Veuillez demander une nouvelle invitation au gérant." },
+         { status: 403 }
+       );
     }
 
     // 2. Construct canonical email for Supabase Auth
@@ -100,44 +85,30 @@ export async function POST(request: NextRequest) {
       ? employee.email.trim().toLowerCase()
       : `${cleanDigits || "user" + Date.now()}@willshop.bf`;
 
-    // 3. Check if Supabase Auth user exists
-    const { data: usersList } = await supabaseAdmin.auth.admin.listUsers();
-    const existingUser = usersList?.users?.find(
-      (u) => u.email?.toLowerCase() === authEmail.toLowerCase() || u.phone === employee.phone
-    );
-
     let authUserId = "";
 
-    if (!existingUser) {
-      // Create user via Admin API (skips email confirmation!)
-      const { data: newAuthUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
-        email: authEmail,
-        password,
-        email_confirm: true,
-        user_metadata: {
-          first_name: employee.first_name,
-          last_name: employee.last_name,
-          phone: employee.phone,
-        },
-      });
+    // 3. Create user via Admin API (skips email confirmation!)
+    // We strictly create. If user exists, we fail, preventing silent password resets of existing accounts.
+    const { data: newAuthUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+      email: authEmail,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        first_name: employee.first_name,
+        last_name: employee.last_name,
+        phone: employee.phone,
+      },
+    });
 
-      if (createErr || !newAuthUser.user) {
-        console.error("[Activate API] Admin createUser error:", createErr);
-        return NextResponse.json(
-          { error: `Échec d'activation du compte: ${createErr?.message || "Erreur serveur"}` },
-          { status: 500 }
-        );
-      }
-
-      authUserId = newAuthUser.user.id;
-    } else {
-      authUserId = existingUser.id;
-      // Update password and confirm user account
-      await supabaseAdmin.auth.admin.updateUserById(authUserId, {
-        password,
-        email_confirm: true,
-      });
+    if (createErr || !newAuthUser.user) {
+      console.error("[Activate API] Admin createUser error:", createErr);
+      return NextResponse.json(
+        { error: `Échec d'activation du compte: L'identifiant est peut-être déjà utilisé (${createErr?.message || "Erreur serveur"}).` },
+        { status: 400 }
+      );
     }
+
+    authUserId = newAuthUser.user.id;
 
     // 4. Ensure user_organization_roles record exists
     const { data: existingRole } = await supabaseAdmin
