@@ -5,7 +5,8 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    const { user, organizationId, role, supabaseAdmin, errorResponse } = await requireRole(request, ['OWNER', 'MANAGER', 'COMMERCIAL', 'LIVREUR']);
+    // COMMERCIAL is NOT allowed to update deliveries
+    const { user, organizationId, role, supabaseAdmin, errorResponse } = await requireRole(request, ['OWNER', 'MANAGER', 'LIVREUR', 'DRIVER']);
     if (errorResponse) return errorResponse;
 
     const body = await request.json();
@@ -25,8 +26,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Ownership check for LIVREUR
-    if (role === 'LIVREUR' || role === 'DRIVER') {
+    // 1. Fetch current delivery state
+    const { data: currentDelivery } = await supabaseAdmin
+      .from('deliveries')
+      .select('status, driver_id')
+      .eq('id', deliveryId)
+      .eq('organization_id', organizationId)
+      .single();
+
+    if (!currentDelivery) {
+      return NextResponse.json({ error: 'Livraison introuvable.' }, { status: 404 });
+    }
+
+    // 2. Ownership check (Sauf OWNER ou MANAGER)
+    if (role !== 'OWNER' && role !== 'MANAGER') {
       const { data: driverInfo } = await supabaseAdmin
         .from('drivers')
         .select('id')
@@ -37,29 +50,34 @@ export async function POST(request: NextRequest) {
       if (!driverInfo) {
         return NextResponse.json({ error: 'Profil livreur introuvable.' }, { status: 403 });
       }
-
-      const { data: deliveryInfo } = await supabaseAdmin
-        .from('deliveries')
-        .select('driver_id')
-        .eq('id', deliveryId)
-        .single();
       
-      if (deliveryInfo?.driver_id !== driverInfo.id) {
+      if (currentDelivery.driver_id !== driverInfo.id) {
         return NextResponse.json({ error: 'Vous ne pouvez pas modifier une livraison qui ne vous est pas assignée.' }, { status: 403 });
       }
     }
 
-    // 4. Prepare patch updates
-    const nowIso = new Date().toISOString();
-    const patch: any = {
-      status,
-      updated_at: nowIso,
+    // 3. State Transition Validation
+    const allowedTransitions: Record<string, string[]> = {
+      'PENDING_ASSIGNMENT': ['ASSIGNED', 'CANCELLED'],
+      'ASSIGNED': ['PICKED_UP', 'CANCELLED', 'IN_TRANSIT'], // Allowing IN_TRANSIT directly just in case UI skips PICKED_UP
+      'PICKED_UP': ['IN_TRANSIT', 'CANCELLED'],
+      'IN_TRANSIT': ['DELIVERED', 'FAILED', 'RESCHEDULED', 'RETURNED'],
+      'FAILED': ['RESCHEDULED', 'RETURNED', 'CANCELLED'],
+      'RESCHEDULED': ['ASSIGNED', 'PICKED_UP', 'CANCELLED', 'IN_TRANSIT'],
+      'DELIVERED': [],
+      'RETURNED': [],
+      'CANCELLED': []
     };
 
-    if (notes) {
-      patch.notes = notes;
+    const currentStatus = currentDelivery.status || 'PENDING_ASSIGNMENT';
+    if (!allowedTransitions[currentStatus]?.includes(status)) {
+      return NextResponse.json(
+        { error: `Transition non autorisée: Impossible de passer de ${currentStatus} à ${status}.` },
+        { status: 400 }
+      );
     }
 
+    const nowIso = new Date().toISOString();
     let updatedDelivery = null;
     let updateErr = null;
 
@@ -97,6 +115,10 @@ export async function POST(request: NextRequest) {
       // Fallback manual update for other statuses
       const patch: any = { status, updated_at: nowIso };
       if (notes) patch.notes = notes;
+      if (status === 'ASSIGNED') {
+          // If moving to ASSIGNED manually (e.g. from RESCHEDULED), ensure it can happen
+          // Note: assign_delivery rpc also exists
+      }
       
       const { data, error } = await supabaseAdmin
         .from('deliveries')
