@@ -95,26 +95,21 @@ export class OrderExecutionService {
       .maybeSingle();
 
     if (stockRow) {
-      const physicalStock = Number(stockRow.physical_stock || 0);
-      const reservedStock = Number(stockRow.reserved_stock || 0);
-      const availableStock = Math.max(0, physicalStock - reservedStock);
+      const availableStock = Math.max(0, Number(stockRow.physical_stock || 0) - Number(stockRow.reserved_stock || 0));
+      
+      // Reserve stock with transactional concurrency lock
+      const { data: reserved, error: rpcError } = await this.supabase.rpc('reserve_stock', {
+        p_product_id: productId,
+        p_qty: qty
+      });
 
-      if (availableStock < qty) {
+      if (rpcError || !reserved) {
         return {
           success: false,
           errorCode: 'INSUFFICIENT_STOCK',
-          message: `Stock insuffisant pour '${product.name}'. Disponible: ${availableStock}, Demandé: ${qty}. Impossible de créer une commande confirmée non honorique.`,
+          message: `Stock insuffisant pour '${product.name}'. Demandé: ${qty}. Echec du verrou transactionnel de concurrence.`,
         };
       }
-
-      // Reserve stock
-      await this.supabase
-        .from('product_stock')
-        .update({
-          reserved_stock: reservedStock + qty,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', stockRow.id);
 
       // Record stock movement (append-only ledger)
       await this.supabase.from('stock_movements').insert({
