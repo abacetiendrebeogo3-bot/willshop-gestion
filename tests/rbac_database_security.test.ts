@@ -109,5 +109,38 @@ describe('Database RBAC & RLS Security Tests', () => {
     });
     // Depending on logic, it could be 404 (not found) or 403 (expired/invalid)
     assert.ok(res.status === 404 || res.status === 403, 'Activation with invalid token should be rejected');
+  it('API: /api/cron/workflows without secret or auth should return 401', async () => {
+    const res = await fetch(`${apiBaseUrl}/api/cron/workflows`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    // With new requireRole fallback, it will try requireRole and fail with 401
+    assert.strictEqual(res.status, 401, 'Unauthenticated cron trigger should return 401');
+  });
+
+  it('API: /api/cron/workflows with wrong secret should return 401', async () => {
+    const res = await fetch(`${apiBaseUrl}/api/cron/workflows`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer wrong_secret_123', 'Content-Type': 'application/json' }
+    });
+    assert.strictEqual(res.status, 401, 'Wrong cron secret should fall back to requireRole and return 401');
+  });
+
+  it('API: /api/cron/workflows called by non-OWNER (e.g. COMMERCIAL) should return 403', async () => {
+    const res = await fetch(`${apiBaseUrl}/api/cron/workflows`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${commercialToken}`, 'Content-Type': 'application/json' }
+    });
+    assert.strictEqual(res.status, 403, 'COMMERCIAL triggering cron should get 403');
+  });
+
+  it('API: /api/cron/workflows called with differing orgId by authenticated user should return 403', async () => {
+    // Assuming ownerToken is not available in test, we just test if the API rejects an arbitrary orgId for an authenticated non-cron user.
+    // Since commercial gets 403 outright, this test is partially covered above. But if ownerToken was used:
+    const res = await fetch(`${apiBaseUrl}/api/cron/workflows?orgId=some-other-uuid`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${commercialToken}`, 'Content-Type': 'application/json' }
+    });
+    assert.strictEqual(res.status, 403, 'User passing arbitrary orgId should be blocked');
   });
 });

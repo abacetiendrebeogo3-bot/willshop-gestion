@@ -30,12 +30,22 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
+    const { user, organizationId, role, supabaseAdmin, errorResponse } = await requireRole(request, ['OWNER', 'MANAGER']);
+    if (errorResponse) return errorResponse;
+
     const body = await request.json();
     const { routineId, currentStepKey, nextStepKey, isFinished } = body;
 
-    let supabaseUrl = getRequiredEnv('NEXT_PUBLIC_SUPABASE_URL');
-    let serviceKey = getRequiredEnv('SUPABASE_SERVICE_ROLE_KEY');
-    const supabaseAdmin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+    // Optional: could verify if routineId belongs to the current user
+    // (In a real scenario, you'd want to check this)
+    const { data: routine } = await supabaseAdmin.from('work_routines')
+      .select('id, user_id')
+      .eq('id', routineId)
+      .single();
+
+    if (!routine || routine.user_id !== user.id) {
+      return NextResponse.json({ error: 'Routine non trouvée ou accès refusé' }, { status: 403 });
+    }
 
     // Update current step to COMPLETED
     if (currentStepKey) {

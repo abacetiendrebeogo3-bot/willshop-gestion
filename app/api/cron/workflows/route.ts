@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createServerSupabaseClient } from '@/src/infrastructure/supabase/server';
 import { WorkflowSchedulerService } from '@/src/application/services/WorkflowSchedulerService';
 import { getRequiredEnv } from '@/src/config/env';
+import { requireRole } from '@/src/lib/auth/requireRole';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +16,38 @@ export async function POST(request: NextRequest) {
 
 async function handleCronExecution(request: NextRequest) {
   try {
+    const cronSecret = process.env.CRON_SECRET;
+    if (!cronSecret) {
+      console.error('[CRON SECURITY ALERT] CRON_SECRET is missing. Failing closed.');
+      return NextResponse.json(
+        { error: 'Configuration critique manquante: CRON_SECRET n\'est pas défini.' },
+        { status: 500 }
+      );
+    }
+
+    let targetOrgId: string | undefined = undefined;
+    const authHeader = request.headers.get('authorization');
+    const isCronAuthorized = authHeader === `Bearer ${cronSecret}`;
+
+    if (isCronAuthorized) {
+      // 1. Authorized by true CRON secret
+      targetOrgId = request.nextUrl.searchParams.get('orgId') || undefined;
+    } else {
+      // 2. Fallback to manual execution by an OWNER
+      const { organizationId, errorResponse } = await requireRole(request, ['OWNER']);
+      if (errorResponse) return errorResponse;
+
+      const requestedOrgId = request.nextUrl.searchParams.get('orgId');
+      if (requestedOrgId && requestedOrgId !== organizationId) {
+        return NextResponse.json(
+          { error: 'Interdit : Vous ne pouvez déclencher le cron que pour votre propre organisation.' },
+          { status: 403 }
+        );
+      }
+      
+      targetOrgId = organizationId;
+    }
+
     let supabaseUrl = '';
     let serviceKey = '';
     try {
@@ -31,36 +63,6 @@ async function handleCronExecution(request: NextRequest) {
     const supabaseAdmin = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false },
     });
-
-    // 1. Authenticate Vercel Cron or User Session
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET || 'willshop_cron_secret';
-    let isAuthorized = false;
-
-    if (authHeader && authHeader === `Bearer ${cronSecret}`) {
-      isAuthorized = true;
-    } else if (request.nextUrl.searchParams.get('secret') === cronSecret) {
-      isAuthorized = true;
-    } else {
-      // Check if logged-in user session (CEO / Manager triggering worker from UI)
-      try {
-        const supabaseUserClient = await createServerSupabaseClient();
-        const { data: authData } = await supabaseUserClient.auth.getUser();
-        if (authData?.user) {
-          isAuthorized = true;
-        }
-      } catch {}
-    }
-
-    if (!isAuthorized) {
-      return NextResponse.json(
-        { error: 'Accès non autorisé au worker de workflow.' },
-        { status: 401 }
-      );
-    }
-
-    // 2. Optional target organizationId filter
-    const targetOrgId = request.nextUrl.searchParams.get('orgId') || undefined;
 
     // 3. Execute Workflow Engine Evaluation
     const schedulerService = new WorkflowSchedulerService(supabaseAdmin);
