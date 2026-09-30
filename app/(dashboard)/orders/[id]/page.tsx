@@ -204,10 +204,17 @@ export default function OrderDetailPage() {
     if (!orderDetails) return;
     try {
       const supabase = createClient();
-      await supabase
-        .from("orders")
-        .update({ status: newStatus })
-        .eq("id", orderDetails.id);
+            const res = await fetch('/api/orders/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: orderDetails.id, status: newStatus }),
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || 'Erreur lors de la mise à jour du statut');
+      }
 
       setOrderStatus(newStatus);
       setShowStatusModal(false);

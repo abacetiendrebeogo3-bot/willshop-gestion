@@ -236,6 +236,12 @@ describe('Sales Agent Repositioning & Operational Execution Test Suite (Scenario
 
   test('J, K, L, M, N, O. Order execution, stock reservation, delivery, driver assignment, PENDING payment, finance & CRM sync', async () => {
     const mockSupabase: any = {
+      rpc: async (fnName: string, args: any) => {
+        if (fnName === 'reserve_stock') {
+          return { data: true, error: null };
+        }
+        return { data: null, error: null };
+      },
       from: (table: string) => {
         if (table === 'products') {
           return {
@@ -404,6 +410,12 @@ describe('Sales Agent Repositioning & Operational Execution Test Suite (Scenario
 
   test('K2. Insufficient stock prevents creating impossible confirmed order', async () => {
     const mockSupabaseStockEmpty: any = {
+      rpc: async (fnName: string, args: any) => {
+        if (fnName === 'reserve_stock') {
+          return { data: false, error: null };
+        }
+        return { data: null, error: null };
+      },
       from: (table: string) => {
         if (table === 'products') {
           return {

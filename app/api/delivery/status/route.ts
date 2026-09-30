@@ -60,27 +60,55 @@ export async function POST(request: NextRequest) {
       patch.notes = notes;
     }
 
-    if (status === 'IN_TRANSIT') {
-      patch.picked_up_at = nowIso;
-    } else if (status === 'DELIVERED') {
-      patch.delivered_at = nowIso;
-      if (recipientName) patch.recipient_name = recipientName;
-    } else if (status === 'FAILED') {
-      patch.failed_at = nowIso;
-      patch.failure_reason = failureReason;
-    } else if (status === 'RESCHEDULED') {
-      patch.rescheduled_at = nowIso;
-      if (rescheduledDate) patch.scheduled_date = rescheduledDate;
-    }
+    let updatedDelivery = null;
+    let updateErr = null;
 
-    // Update delivery record in DB
-    const { data: updatedDelivery, error: updateErr } = await supabaseAdmin
-      .from('deliveries')
-      .update(patch)
-      .eq('id', deliveryId)
-      .eq('organization_id', organizationId)
-      .select()
-      .single();
+    if (status === 'IN_TRANSIT') {
+      const { data, error } = await supabaseAdmin.rpc('start_transit_delivery', {
+        p_delivery_id: deliveryId,
+        p_org_id: organizationId
+      });
+      updatedDelivery = data;
+      updateErr = error;
+    } else if (status === 'DELIVERED') {
+      const { data, error } = await supabaseAdmin.rpc('deliver_delivery', {
+        p_delivery_id: deliveryId,
+        p_org_id: organizationId
+      });
+      updatedDelivery = data;
+      updateErr = error;
+    } else if (status === 'FAILED') {
+      const { data, error } = await supabaseAdmin.rpc('fail_delivery', {
+        p_delivery_id: deliveryId,
+        p_org_id: organizationId,
+        p_reason: failureReason
+      });
+      updatedDelivery = data;
+      updateErr = error;
+    } else if (status === 'RESCHEDULED') {
+      const { data, error } = await supabaseAdmin.rpc('reschedule_delivery', {
+        p_delivery_id: deliveryId,
+        p_org_id: organizationId,
+        p_new_date: rescheduledDate
+      });
+      updatedDelivery = data;
+      updateErr = error;
+    } else {
+      // Fallback manual update for other statuses
+      const patch: any = { status, updated_at: nowIso };
+      if (notes) patch.notes = notes;
+      
+      const { data, error } = await supabaseAdmin
+        .from('deliveries')
+        .update(patch)
+        .eq('id', deliveryId)
+        .eq('organization_id', organizationId)
+        .select()
+        .single();
+      
+      updatedDelivery = data;
+      updateErr = error;
+    }
 
     if (updateErr) {
       console.error('Error updating delivery status:', updateErr);
