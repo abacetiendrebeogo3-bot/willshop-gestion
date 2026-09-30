@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import {  describe, it, expect  } from './vitest-setup';
 import { WhatsAppEventNormalizer } from "../src/infrastructure/whatsapp/WhatsAppEventNormalizer";
 
 /**

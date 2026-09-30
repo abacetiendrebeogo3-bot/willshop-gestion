@@ -3,7 +3,7 @@
  * Tests step-by-step guided review sequence, metrics calculation, and routine state transitions.
  */
 
-import { describe, it, expect } from 'vitest';
+import {  describe, it, expect  } from './vitest-setup';
 import { CEO_MY_DIRECTION_STEPS, CEODirectionMetrics } from '../src/application/services/RoutineEngineService';
 
 describe('Phase 3 Guided CEO Routine ("Ma Direction")', () => {

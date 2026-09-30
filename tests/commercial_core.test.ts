@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import {  describe, it, expect, beforeEach  } from './vitest-setup';
 
 /**
  * WILLShop OS — Commercial Core & Order Lifecycle Test Suite

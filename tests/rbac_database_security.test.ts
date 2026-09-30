@@ -10,10 +10,15 @@ const commercialToken = process.env.TEST_TOKEN_COMMERCIAL || '';
 const livreurToken = process.env.TEST_TOKEN_LIVREUR || '';
 const apiBaseUrl = process.env.TEST_API_BASE_URL || 'http://localhost:3000';
 
-describe('Database RBAC & RLS Security Tests', () => {
-  if (!supabaseUrl || !ownerToken || !commercialToken || !livreurToken) {
-    console.warn('⚠️ Skipping RBAC DB tests: Missing TEST_TOKEN_* environment variables.');
-    return;
+const shouldSkip = !supabaseUrl || !ownerToken || !commercialToken || !livreurToken;
+if (shouldSkip) {
+  console.warn('⚠️ Skipping RBAC DB tests: Missing TEST_TOKEN_* environment variables.');
+}
+
+describe('Database RBAC & RLS Security Tests', { skip: shouldSkip }, () => {
+  if (shouldSkip) {
+    it('dummy test to satisfy test runner', () => {});
+    return; // Prevent createClient from throwing on empty URL
   }
 
   const clientOwner = createClient(supabaseUrl, anonKey, {
@@ -82,6 +87,8 @@ describe('Database RBAC & RLS Security Tests', () => {
     });
     // Since delivery 'fake-unassigned-uuid' is not assigned to this driver (or doesn't exist), it returns 403
     assert.strictEqual(res.status, 403, 'LIVREUR modifying unassigned delivery should get 403');
+  });
+
   it('API: /api/team/invite should reject COMMERCIAL inviting an OWNER with 403', async () => {
     const res = await fetch(`${apiBaseUrl}/api/team/invite`, {
       method: 'POST',
@@ -109,6 +116,8 @@ describe('Database RBAC & RLS Security Tests', () => {
     });
     // Depending on logic, it could be 404 (not found) or 403 (expired/invalid)
     assert.ok(res.status === 404 || res.status === 403, 'Activation with invalid token should be rejected');
+  });
+
   it('API: /api/cron/workflows without secret or auth should return 401', async () => {
     const res = await fetch(`${apiBaseUrl}/api/cron/workflows`, {
       method: 'POST',

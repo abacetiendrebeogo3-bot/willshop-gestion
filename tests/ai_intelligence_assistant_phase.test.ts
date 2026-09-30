@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import {  describe, it, expect  } from './vitest-setup';
 import { UnifiedAIAssistantService } from "../src/application/services/UnifiedAIAssistantService";
 import { CommercialIntelligenceEngine } from "../src/application/services/CommercialIntelligenceEngine";
 

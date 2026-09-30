@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import {  describe, it, expect  } from './vitest-setup';
 import { DeliveryStateMachine } from "../src/domain/services/DeliveryStateMachine";
 import { DeliveryStatus } from "../src/domain/entities/DataCoreEntities";
 import { ValidationError } from "../src/domain/errors/AppErrors";

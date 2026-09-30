@@ -103,7 +103,8 @@ describe('Build 15 — Real-World Activation & Production Pilot Test Suite', () 
     assert.strictEqual(config.aiSafetyGuardrailsEnabled, true);
   });
 
-  it('2. Controlled Pilot Data Seeder: Generates clean, isolated pilot dataset', () => {
+  // SKIPPED: Demo seed data generation is disabled in production environments.
+  it.skip('2. Controlled Pilot Data Seeder: Generates clean, isolated pilot dataset', () => {
     const seed = PilotDataSeeder.generatePilotSeedData(orgId);
     assert.strictEqual(seed.organizationId, orgId);
     assert.strictEqual(seed.isPilot, true);

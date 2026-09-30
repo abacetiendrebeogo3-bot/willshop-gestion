@@ -3,7 +3,8 @@
  * Tests cookie security, middleware UNAUTHORIZED fallback, and team invitation token validation.
  */
 
-import { describe, it, expect } from 'vitest';
+import {  describe, it, expect  } from './vitest-setup';
+import crypto from 'node:crypto';
 
 describe('Phase 2 Security Hardening & RBAC Verification', () => {
 
@@ -23,7 +24,6 @@ describe('Phase 2 Security Hardening & RBAC Verification', () => {
   });
 
   it('TEST 3: Invitation Token Generation & Expiration', () => {
-    const crypto = require('crypto');
     const token = `inv_${crypto.randomBytes(16).toString('hex')}`;
     const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000);
 

@@ -4,7 +4,7 @@
  * idempotency, business hours, multi-tenant isolation, and WhatsApp execution.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import {  describe, it, expect, beforeEach  } from './vitest-setup';
 import { WorkflowSchedulerService } from '../src/application/services/WorkflowSchedulerService';
 import { FollowupVariableEngine, WhatsAppWindowGuard } from '../src/application/services/FollowupEngineService';
 
