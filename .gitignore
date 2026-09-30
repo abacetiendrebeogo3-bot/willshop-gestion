@@ -38,3 +38,6 @@ Thumbs.db
 
 .vercel
 .env*
+
+# Local Dev Tools
+scripts/dev-tools/
