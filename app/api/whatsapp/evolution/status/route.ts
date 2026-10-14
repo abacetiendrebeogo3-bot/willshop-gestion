@@ -94,13 +94,33 @@ export async function GET(request: NextRequest) {
 
     const instanceName = `ws_org_${organizationId.replace(/-/g, '').slice(0, 12)}`;
 
+    // Check DB for existing number row
+    const { data: existingNum } = await supabaseAdmin
+      .from('whatsapp_numbers')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .or(`provider_identity.eq.${instanceName},provider_phone_number_id.eq.${instanceName},provider.eq.EVOLUTION`)
+      .maybeSingle();
+
+    // If org has explicitly disconnected or demo is not marked active in DB, do NOT auto-connect
+    const isExplicitlyDisconnected = existingNum?.status === 'DISCONNECTED' || orgSettings.whatsapp_demo_connected === false;
+    if (evolutionAdapter.isDemo() && isExplicitlyDisconnected) {
+      return NextResponse.json({
+        status: 'DISCONNECTED',
+        instanceName,
+        phoneNumber: null,
+        isDemo: true,
+        configuredUrl: evoUrl,
+      });
+    }
+
     // 4. Query Evolution connection state
     const connState = await evolutionAdapter.getConnectionState(instanceName);
 
     if (connState.state === 'CONNECTED') {
       // Fetch connected identity details from Evolution
       const ownerInfo = await evolutionAdapter.getInstanceOwnerInfo(instanceName);
-      const realPhone = ownerInfo.phoneNumber || connState.phoneNumber || '';
+      const realPhone = orgSettings.demo_phone_number || existingNum?.phone_number || ownerInfo.phoneNumber || connState.phoneNumber || '';
 
       if (!realPhone) {
         return NextResponse.json({
@@ -113,12 +133,6 @@ export async function GET(request: NextRequest) {
 
       // Upsert into whatsapp_numbers ONLY AFTER real proof of connection
       let numRow = null;
-      const { data: existingNum } = await supabaseAdmin
-        .from('whatsapp_numbers')
-        .select('*')
-        .eq('organization_id', organizationId)
-        .or(`provider_identity.eq.${instanceName},provider_phone_number_id.eq.${instanceName}`)
-        .maybeSingle();
 
       if (existingNum?.id) {
         const { data: updated } = await supabaseAdmin

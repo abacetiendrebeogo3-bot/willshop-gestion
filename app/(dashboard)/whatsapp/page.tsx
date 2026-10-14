@@ -249,6 +249,7 @@ export default function ConversationsPage() {
   const [qrError, setQrError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<string>("UNKNOWN");
   const [connectedPhone, setConnectedPhone] = useState<string | null>(null);
+  const [demoPhoneInput, setDemoPhoneInput] = useState<string>("+226 72 01 95 24");
   const [isDemoConnection, setIsDemoConnection] = useState(false);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   const [showConfigForm, setShowConfigForm] = useState(false);
@@ -298,6 +299,9 @@ export default function ConversationsPage() {
         setIsDemoConnection(Boolean(data.isDemo));
         if (data.status === "CONNECTED") {
           setConnectedPhone(data.phoneNumber || null);
+          if (data.phoneNumber) {
+            setDemoPhoneInput(data.phoneNumber);
+          }
         } else {
           setConnectedPhone(null);
         }
@@ -341,6 +345,7 @@ export default function ConversationsPage() {
         setConnectionStatus("CONNECTED");
         setIsDemoConnection(Boolean(data.isDemo));
         setConnectedPhone(data.phoneNumber || null);
+        if (data.phoneNumber) setDemoPhoneInput(data.phoneNumber);
         setShowConfigForm(false);
         showToast("✓ WhatsApp connecté avec succès !");
       } else if (data?.state === "WAITING_QR") {
@@ -367,15 +372,16 @@ export default function ConversationsPage() {
     }
   };
 
-  const handleConnectDemo = async () => {
+  const handleConnectDemo = async (overridePhone?: string) => {
     setIsCheckingStatus(true);
     setQrError(null);
     setQrCodeBase64(generateFallbackQrSvg());
+    const phoneToUse = (overridePhone || demoPhoneInput || "+226 72 01 95 24").trim();
     try {
       const res = await fetch("/api/whatsapp/evolution/instance?mode=demo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode: "demo" }),
+        body: JSON.stringify({ mode: "demo", phoneNumber: phoneToUse }),
       });
       const data = await res.json();
       const qrData = data?.qrCode?.base64;
@@ -387,9 +393,11 @@ export default function ConversationsPage() {
       
       setConnectionStatus("CONNECTED");
       setIsDemoConnection(true);
-      setConnectedPhone(data?.phoneNumber || "+226 55 00 27 96");
+      const finalPhone = data?.phoneNumber || phoneToUse;
+      setConnectedPhone(finalPhone);
+      setDemoPhoneInput(finalPhone);
       setShowConfigForm(false);
-      showToast("✓ Passerelle WhatsApp Démo connectée (+226 55 00 27 96) !");
+      showToast(`✓ Passerelle WhatsApp connectée (${finalPhone}) !`);
       loadConversations();
     } catch (err: any) {
       setQrError(err.message || "Erreur lors de l'activation démo");
@@ -400,16 +408,20 @@ export default function ConversationsPage() {
 
   const handleDisconnectInstance = async () => {
     if (!confirm("Voulez-vous vraiment déconnecter l'instance WhatsApp ?")) return;
+    setIsCheckingStatus(true);
     try {
       await fetch("/api/whatsapp/evolution/disconnect", { method: "POST" });
       setConnectionStatus("DISCONNECTED");
       setConnectedPhone(null);
       setIsDemoConnection(false);
-      showToast("Instance WhatsApp déconnectée.");
+      setQrError(null);
+      showToast("✓ Ligne WhatsApp déconnectée avec succès.");
     } catch {
       setConnectionStatus("DISCONNECTED");
       setConnectedPhone(null);
       setIsDemoConnection(false);
+    } finally {
+      setIsCheckingStatus(false);
     }
   };
 
@@ -1165,8 +1177,8 @@ export default function ConversationsPage() {
                     <p className="text-[11px] text-stone-500 font-medium">
                       {connectionStatus === "CONNECTED"
                         ? isDemoConnection
-                          ? "Passerelle Démo active (+226 55 00 27 96). Vos messages, CRM et relances sont traités en direct."
-                          : "Instance WhatsApp active. Synchronisation et webhooks fonctionnels."
+                          ? `Passerelle Démo active (${connectedPhone || "votre numéro"}). Vos messages, CRM et relances sont traités en direct.`
+                          : `Instance WhatsApp active (${connectedPhone || ""}). Synchronisation et webhooks fonctionnels.`
                         : "Scannez le QR Code ou activez la passerelle Démo pour relier votre ligne."}
                     </p>
                   </div>
@@ -1175,7 +1187,7 @@ export default function ConversationsPage() {
                 <div className="flex items-center gap-2 shrink-0">
                   {connectionStatus !== "CONNECTED" && (
                     <button
-                      onClick={handleConnectDemo}
+                      onClick={() => handleConnectDemo()}
                       className="px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs"
                     >
                       <Zap className="w-3.5 h-3.5 text-emerald-600" />
@@ -1706,32 +1718,59 @@ export default function ConversationsPage() {
                 </div>
 
                 {inputEvoUrl.toUpperCase() === "DEMO" ? (
-                  <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl text-xs space-y-2.5">
+                  <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl text-xs space-y-3">
                     <p className="font-bold flex items-center gap-1.5 text-emerald-800">
                       <Sparkles className="w-4 h-4 text-emerald-600" />
                       Passerelle Démo Intégrée
                     </p>
                     <p className="text-[11px] text-emerald-700 leading-relaxed font-medium">
-                      Recommandé en environnement local sans serveur VPS. Permet de simuler un numéro WhatsApp burkinabè (+226 55 00 27 96) et de tester toutes les fonctionnalités : conversations, commandes 1-clic, relances et IA commerciale.
+                      Recommandé en environnement local sans serveur VPS. Choisissez votre propre numéro WhatsApp pour tester toutes les fonctionnalités (conversations, commandes 1-clic, relances et IA commerciale).
                     </p>
-                    <button
-                      type="button"
-                      onClick={handleConnectDemo}
-                      disabled={isCheckingStatus}
-                      className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-sm transition-all flex items-center justify-center gap-2 mt-2"
-                    >
-                      {isCheckingStatus ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Connexion Démo...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Zap className="w-4 h-4" />
-                          <span>Activer la passerelle Démo</span>
-                        </>
+
+                    <div>
+                      <label className="block text-[11px] font-extrabold text-emerald-950 mb-1">
+                        Numéro WhatsApp à associer :
+                      </label>
+                      <input
+                        type="tel"
+                        placeholder="+226 70 00 00 00"
+                        value={demoPhoneInput}
+                        onChange={(e) => setDemoPhoneInput(e.target.value)}
+                        className="w-full bg-white border border-emerald-200 rounded-xl px-3 py-2 text-xs text-[#1F1917] font-bold outline-none font-mono"
+                      />
+                    </div>
+
+                    <div className="pt-1 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleConnectDemo()}
+                        disabled={isCheckingStatus}
+                        className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-sm transition-all flex items-center justify-center gap-2"
+                      >
+                        {isCheckingStatus ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Connexion...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="w-4 h-4" />
+                            <span>{connectionStatus === "CONNECTED" && isDemoConnection ? "Mettre à jour ce numéro" : "Connecter ce numéro"}</span>
+                          </>
+                        )}
+                      </button>
+
+                      {connectionStatus === "CONNECTED" && (
+                        <button
+                          type="button"
+                          onClick={handleDisconnectInstance}
+                          disabled={isCheckingStatus}
+                          className="px-3.5 py-2.5 bg-red-100 hover:bg-red-200 text-red-700 font-bold rounded-xl text-xs transition-colors"
+                        >
+                          Déconnecter
+                        </button>
                       )}
-                    </button>
+                    </div>
                   </div>
                 ) : (
                   <form onSubmit={handleSaveWhatsappSettings} className="space-y-3">
@@ -1811,11 +1850,11 @@ export default function ConversationsPage() {
                 <div className="pt-2 flex flex-col gap-2">
                   <button
                     type="button"
-                    onClick={handleConnectDemo}
+                    onClick={() => handleConnectDemo()}
                     className="w-full py-2.5 px-3 bg-[#800020] hover:bg-[#660019] text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2"
                   >
                     <Zap className="w-4 h-4 text-amber-300" />
-                    <span>Activer la passerelle Démo (+226 55 00 27 96)</span>
+                    <span>Activer la passerelle Démo ({demoPhoneInput || "+226 72 01 95 24"})</span>
                   </button>
                   <button
                     type="button"
@@ -1846,7 +1885,7 @@ export default function ConversationsPage() {
                 <div className="space-y-1">
                   <p className="text-xs text-[#1F1917] font-bold">
                     {connectionStatus === "CONNECTED"
-                      ? `Ligne active : ${connectedPhone || "+226 55 00 27 96"}`
+                      ? `Ligne active : ${connectedPhone || demoPhoneInput}`
                       : "Scannez ce QR Code avec votre téléphone"}
                   </p>
                   <p className="text-[11px] text-stone-500 font-medium">
@@ -1854,18 +1893,27 @@ export default function ConversationsPage() {
                   </p>
                 </div>
 
-                {isDemoConnection ? (
-                  <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-center space-y-1">
+                {isDemoConnection && connectionStatus === "CONNECTED" ? (
+                  <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-center space-y-2">
                     <p className="text-[11px] text-emerald-800 font-bold flex items-center justify-center gap-1">
                       <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                      Mode Démo Connecté (+226 55 00 27 96)
+                      Ligne Démo Connectée ({connectedPhone || demoPhoneInput})
                     </p>
                     <p className="text-[10px] text-emerald-700 leading-tight font-medium">
                       Votre ligne virtuelle burkinabè est synchronisée en direct avec votre CRM et vos commandes.
                     </p>
+                    <div className="pt-1 flex justify-center">
+                      <button
+                        type="button"
+                        onClick={handleDisconnectInstance}
+                        className="px-3 py-1.5 text-[11px] font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors"
+                      >
+                        Déconnecter cette ligne
+                      </button>
+                    </div>
                   </div>
                 ) : connectionStatus === "CONNECTED" ? (
-                  <div className="pt-1">
+                  <div className="pt-1 flex justify-center">
                     <button
                       type="button"
                       onClick={handleDisconnectInstance}

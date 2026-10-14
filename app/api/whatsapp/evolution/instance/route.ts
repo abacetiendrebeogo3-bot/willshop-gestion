@@ -87,6 +87,13 @@ export async function POST(request: NextRequest) {
 
     const queryMode = request.nextUrl.searchParams.get('mode');
     const isDemoRequested = body?.mode === 'demo' || queryMode === 'demo';
+    const rawRequestedPhone = (body?.phoneNumber || body?.phone || request.nextUrl.searchParams.get('phone') || '').trim();
+
+    let targetPhone = '';
+    if (rawRequestedPhone) {
+      const cleaned = rawRequestedPhone.replace(/[^\d+]/g, '');
+      targetPhone = cleaned.startsWith('+') ? cleaned : `+${cleaned}`;
+    }
 
     let evoUrl = orgSettings.evolution_api_url || process.env.EVOLUTION_API_URL || process.env.NEXT_PUBLIC_EVOLUTION_API_URL || '';
     let evoKey = orgSettings.evolution_api_key || process.env.EVOLUTION_API_KEY || '';
@@ -94,10 +101,29 @@ export async function POST(request: NextRequest) {
     if (isDemoRequested) {
       evoUrl = 'DEMO';
       evoKey = 'demo-key';
+
+      if (!targetPhone) {
+        if (orgSettings.demo_phone_number) {
+          targetPhone = orgSettings.demo_phone_number;
+        } else {
+          // Look up existing numbers for this org
+          const { data: existingNumbers } = await supabaseAdmin
+            .from('whatsapp_numbers')
+            .select('phone_number')
+            .eq('organization_id', organizationId)
+            .neq('status', 'DELETED');
+
+          const validNonDemo = existingNumbers?.find((n: any) => n.phone_number && !n.phone_number.includes('55002796'));
+          targetPhone = validNonDemo?.phone_number || '+22672019524';
+        }
+      }
+
       const updatedSettings = {
         ...orgSettings,
         evolution_api_url: 'DEMO',
         evolution_api_key: 'demo-key',
+        whatsapp_demo_connected: true,
+        demo_phone_number: targetPhone,
       };
       await supabaseAdmin
         .from('organizations')
@@ -125,7 +151,7 @@ export async function POST(request: NextRequest) {
     const webhookUrl = `${appUrl}/api/webhooks/whatsapp/evolution`;
 
     // 5. Create or verify instance on Evolution
-    const createResult = await evolutionAdapter.createInstance(instanceName, webhookUrl);
+    const createResult = await evolutionAdapter.createInstance(instanceName, webhookUrl, targetPhone);
     if (!createResult.success) {
       return NextResponse.json(
         {
@@ -150,7 +176,7 @@ export async function POST(request: NextRequest) {
 
     // Pre-register or update whatsapp_numbers row so org is mapped immediately
     const ownerInfo = await evolutionAdapter.getInstanceOwnerInfo(instanceName);
-    const realPhone = ownerInfo.phoneNumber || connState.phoneNumber || '+22655002796';
+    const realPhone = targetPhone || ownerInfo.phoneNumber || connState.phoneNumber || '+22672019524';
 
     const { data: existingNum } = await supabaseAdmin
       .from('whatsapp_numbers')
@@ -164,7 +190,7 @@ export async function POST(request: NextRequest) {
         .from('whatsapp_numbers')
         .update({
           phone_number: realPhone,
-          display_name: ownerInfo.displayName || (evolutionAdapter.isDemo() ? 'WILLShop Démo (+226 55 00 27 96)' : 'WILLShop Evolution'),
+          display_name: ownerInfo.displayName || (evolutionAdapter.isDemo() ? `WILLShop Démo (${realPhone})` : 'WILLShop Evolution'),
           status: 'ACTIVE',
           updated_at: new Date().toISOString(),
         })
@@ -173,7 +199,7 @@ export async function POST(request: NextRequest) {
       await supabaseAdmin.from('whatsapp_numbers').insert({
         organization_id: organizationId,
         phone_number: realPhone,
-        display_name: ownerInfo.displayName || (evolutionAdapter.isDemo() ? 'WILLShop Démo (+226 55 00 27 96)' : 'WILLShop Evolution'),
+        display_name: ownerInfo.displayName || (evolutionAdapter.isDemo() ? `WILLShop Démo (${realPhone})` : 'WILLShop Evolution'),
         provider: 'EVOLUTION',
         provider_identity: instanceName,
         provider_phone_number_id: instanceName,

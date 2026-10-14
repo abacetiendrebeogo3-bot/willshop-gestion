@@ -83,14 +83,14 @@ describe('Evolution WhatsApp Real QR & Instance Management Test Suite', () => {
     assert.strictEqual(demoAdapter.isConfigured(), true);
     assert.strictEqual(demoAdapter.getConfigError(), null);
 
-    const instResult = await demoAdapter.createInstance('ws_org_demo1234');
+    const instResult = await demoAdapter.createInstance('ws_org_demo1234', undefined, '+22672019524');
     assert.strictEqual(instResult.success, true);
     assert.strictEqual(instResult.status, 'CONNECTED');
     assert.ok(instResult.qrcode?.base64);
 
     const state = await demoAdapter.getConnectionState('ws_org_demo1234');
     assert.strictEqual(state.state, 'CONNECTED');
-    assert.strictEqual(state.phoneNumber, '+22655002796');
+    assert.strictEqual(state.phoneNumber, '+22672019524');
 
     const sendRes = await demoAdapter.sendTextMessage('ws_org_demo1234', {
       toPhoneNumber: '+22670000000',
@@ -98,5 +98,10 @@ describe('Evolution WhatsApp Real QR & Instance Management Test Suite', () => {
     });
     assert.strictEqual(sendRes.status, 'SENT');
     assert.ok(sendRes.externalMessageId?.startsWith('DEMO-MSG-'));
+
+    // Test disconnection
+    await demoAdapter.logoutInstance('ws_org_demo1234');
+    const disconnectedState = await demoAdapter.getConnectionState('ws_org_demo1234');
+    assert.strictEqual(disconnectedState.state, 'DISCONNECTED');
   });
 });

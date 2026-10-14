@@ -14,6 +14,15 @@ import {
 export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
   private readonly baseUrl: string;
   private readonly apiKey: string;
+  private static demoStateMap = new Map<string, { connected: boolean; phoneNumber: string }>();
+
+  public static setDemoInstanceConnected(instanceName: string, connected: boolean, phoneNumber?: string): void {
+    const existing = EvolutionWhatsAppAdapter.demoStateMap.get(instanceName);
+    EvolutionWhatsAppAdapter.demoStateMap.set(instanceName, {
+      connected,
+      phoneNumber: phoneNumber || existing?.phoneNumber || '+22672019524',
+    });
+  }
 
   constructor(baseUrl?: string, apiKey?: string) {
     const rawUrl = baseUrl || process.env.EVOLUTION_API_URL || process.env.NEXT_PUBLIC_EVOLUTION_API_URL || '';
@@ -273,7 +282,7 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
   /**
    * Creates or fetches an instance on Evolution API v2 or simulation.
    */
-  async createInstance(instanceName: string, webhookUrl?: string): Promise<{
+  async createInstance(instanceName: string, webhookUrl?: string, customPhone?: string): Promise<{
     success: boolean;
     instanceName: string;
     status?: string;
@@ -282,7 +291,12 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
     isDemo?: boolean;
   }> {
     if (this.isDemo()) {
-      console.log(`[DEMO_WHATSAPP] 🚀 Created simulated instance '${instanceName}'`);
+      const targetPhone = (customPhone || '').trim() || '+22672019524';
+      EvolutionWhatsAppAdapter.demoStateMap.set(instanceName, {
+        connected: true,
+        phoneNumber: targetPhone,
+      });
+      console.log(`[DEMO_WHATSAPP] 🚀 Created simulated instance '${instanceName}' with phone ${targetPhone}`);
       return {
         success: true,
         instanceName,
@@ -369,11 +383,21 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
     isDemo?: boolean;
   }> {
     if (this.isDemo()) {
+      const stored = EvolutionWhatsAppAdapter.demoStateMap.get(instanceName);
+      if (stored && stored.connected) {
+        const phone = stored.phoneNumber || '+22672019524';
+        const clean = phone.replace(/[^\d]/g, '');
+        return {
+          state: 'CONNECTED',
+          rawState: 'open',
+          phoneNumber: phone,
+          ownerJid: `${clean}@s.whatsapp.net`,
+          isDemo: true,
+        };
+      }
       return {
-        state: 'CONNECTED',
-        rawState: 'open',
-        phoneNumber: '+22655002796',
-        ownerJid: '22655002796@s.whatsapp.net',
+        state: 'DISCONNECTED',
+        rawState: 'close',
         isDemo: true,
       };
     }
@@ -531,6 +555,7 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
   async logoutInstance(instanceName: string): Promise<boolean> {
     if (this.isDemo()) {
       console.log(`[DEMO_WHATSAPP] Logged out simulated instance '${instanceName}'`);
+      EvolutionWhatsAppAdapter.demoStateMap.set(instanceName, { connected: false, phoneNumber: '' });
       return true;
     }
     try {
@@ -553,10 +578,13 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
     ownerJid?: string;
   }> {
     if (this.isDemo()) {
+      const stored = EvolutionWhatsAppAdapter.demoStateMap.get(instanceName);
+      const phone = stored?.phoneNumber || '+22672019524';
+      const clean = phone.replace(/[^\d]/g, '');
       return {
-        phoneNumber: '+22655002796',
-        ownerJid: '22655002796@s.whatsapp.net',
-        displayName: 'WILLShop Démo (+226 55 00 27 96)',
+        phoneNumber: phone,
+        ownerJid: `${clean}@s.whatsapp.net`,
+        displayName: `WILLShop Démo (${phone})`,
       };
     }
 

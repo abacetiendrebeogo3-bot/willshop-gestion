@@ -80,25 +80,36 @@ export async function POST(request: NextRequest) {
     const evoUrl = process.env.EVOLUTION_API_URL || process.env.NEXT_PUBLIC_EVOLUTION_API_URL || orgSettings.evolution_api_url || '';
     const evoKey = process.env.EVOLUTION_API_KEY || orgSettings.evolution_api_key || '';
 
-    const evolutionAdapter = new EvolutionWhatsAppAdapter(evoUrl, evoKey);
-    if (!evolutionAdapter.isConfigured()) {
-      return NextResponse.json(
-        { error: evolutionAdapter.getConfigError() },
-        { status: 400 }
-      );
-    }
-
     const instanceName = `ws_org_${organizationId.replace(/-/g, '').slice(0, 12)}`;
 
-    // 4. Logout on Evolution API
-    await evolutionAdapter.logoutInstance(instanceName);
+    // 4. Logout on Evolution API if adapter is configured
+    try {
+      if (evolutionAdapter.isConfigured()) {
+        await evolutionAdapter.logoutInstance(instanceName);
+      }
+    } catch (logoutErr) {
+      console.warn('[Disconnect Route] Logout warning:', logoutErr);
+    }
 
-    // 5. Update whatsapp_numbers status in DB
+    // 5. Update whatsapp_numbers status to DISCONNECTED in DB
     await supabaseAdmin
       .from('whatsapp_numbers')
       .update({ status: 'DISCONNECTED', updated_at: new Date().toISOString() })
       .eq('organization_id', organizationId)
-      .or(`provider_identity.eq.${instanceName},provider_phone_number_id.eq.${instanceName}`);
+      .or(`provider_identity.eq.${instanceName},provider_phone_number_id.eq.${instanceName},provider.eq.EVOLUTION`);
+
+    // 6. Update organization settings to clear connection flags
+    const updatedSettings = {
+      ...orgSettings,
+      whatsapp_connected: false,
+      whatsapp_demo_connected: false,
+      ...(orgSettings.evolution_api_url === 'DEMO' ? { evolution_api_url: '', evolution_api_key: '' } : {}),
+    };
+
+    await supabaseAdmin
+      .from('organizations')
+      .update({ settings: updatedSettings, updated_at: new Date().toISOString() })
+      .eq('id', organizationId);
 
     return NextResponse.json({
       success: true,
