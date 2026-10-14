@@ -141,15 +141,16 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { evolution_api_url, evolution_api_key } = body || {};
 
-    if (!evolution_api_url || !evolution_api_key) {
+    const cleanUrl = (evolution_api_url || '').trim().replace(/\/+$/, '');
+    const isDemo = cleanUrl.toUpperCase() === 'DEMO';
+    const cleanKey = isDemo ? 'demo-key' : (evolution_api_key || '').trim().replace(/^["']|["']$/g, '');
+
+    if (!cleanUrl || (!isDemo && !cleanKey)) {
       return NextResponse.json(
         { error: 'L\'URL du serveur Evolution API et la clé API sont requises.' },
         { status: 400 }
       );
     }
-
-    const cleanUrl = evolution_api_url.trim().replace(/\/+$/, '');
-    const cleanKey = evolution_api_key.trim().replace(/^["']|["']$/g, '');
 
     const { data: orgData } = await supabaseAdmin
       .from('organizations')

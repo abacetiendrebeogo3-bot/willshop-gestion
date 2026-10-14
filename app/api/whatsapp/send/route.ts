@@ -65,8 +65,18 @@ export async function POST(request: NextRequest) {
     const providerIdentity = whatsappNum.provider_identity || whatsappNum.provider_phone_number_id || `ws_org_${organizationId.replace(/-/g, '').slice(0, 12)}`;
 
     // 6. Instantiate adapter & send message via WhatsApp gateway
+    const { data: orgData } = await supabaseAdmin
+      .from('organizations')
+      .select('settings')
+      .eq('id', organizationId)
+      .single();
+
+    const orgSettings = orgData?.settings || {};
+    const evoUrl = orgSettings.evolution_api_url || process.env.EVOLUTION_API_URL || process.env.NEXT_PUBLIC_EVOLUTION_API_URL || '';
+    const evoKey = orgSettings.evolution_api_key || process.env.EVOLUTION_API_KEY || '';
+
     const adapter = provider === 'EVOLUTION'
-      ? new EvolutionWhatsAppAdapter()
+      ? new EvolutionWhatsAppAdapter(evoUrl, evoKey)
       : new MetaWhatsAppAdapter();
 
     const sendResult = await adapter.sendTextMessage(providerIdentity, {

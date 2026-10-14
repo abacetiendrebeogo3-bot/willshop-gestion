@@ -7,8 +7,14 @@ import { createServerClient } from '@supabase/ssr';
  */
 
 async function getUserRole(userId: string, request: NextRequest): Promise<string> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://stbzctncpvgqdpybcrmg.supabase.co';
+  // AUDIT FIX: Remove hardcoded URL fallback — fail fast if env var is missing
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+
+  if (!supabaseUrl) {
+    console.error('[Middleware Security Error] NEXT_PUBLIC_SUPABASE_URL environment variable is missing');
+    return 'UNAUTHORIZED';
+  }
 
   if (!serviceKey) {
     console.error('[Middleware Security Error] SUPABASE_SERVICE_ROLE_KEY is missing');
@@ -73,14 +79,16 @@ export async function middleware(request: NextRequest) {
     });
 
     const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://stbzctncpvgqdpybcrmg.supabase.co',
+      // AUDIT FIX: Remove hardcoded URL fallback — throw if missing
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
       {
         cookies: {
           getAll() {
             return request.cookies.getAll();
           },
-          setAll(cookiesToSet: any[]) {
+          // AUDIT FIX: Replace any[] with properly typed cookie set
+          setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
             cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value));
             supabaseResponse = NextResponse.next({
               request,
@@ -127,14 +135,28 @@ export async function middleware(request: NextRequest) {
     // If visiting auth routes while logged in -> redirect to role home
     if (isAuthRoute) {
       const response = NextResponse.redirect(new URL(homePath, request.url));
-      response.cookies.set('willshop_role', role, { path: '/', maxAge: 86400 * 7 });
+      // AUDIT FIX: Add httpOnly + secure flags to prevent XSS role cookie reading
+      response.cookies.set('willshop_role', role, {
+        path: '/',
+        maxAge: 86400 * 7,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+      });
       return response;
     }
 
     // Root path -> redirect to role home
     if (pathname === '/') {
       const response = NextResponse.redirect(new URL(homePath, request.url));
-      response.cookies.set('willshop_role', role, { path: '/', maxAge: 86400 * 7 });
+      // AUDIT FIX: Add httpOnly + secure flags
+      response.cookies.set('willshop_role', role, {
+        path: '/',
+        maxAge: 86400 * 7,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+      });
       return response;
     }
 
@@ -150,7 +172,14 @@ export async function middleware(request: NextRequest) {
       if (isForbidden) {
         console.warn(`[RBAC BLOCK] Commercial user attempted to access forbidden route ${pathname}`);
         const response = NextResponse.redirect(new URL('/sales/my-day', request.url));
-        response.cookies.set('willshop_role', role, { path: '/', maxAge: 86400 * 7 });
+        // AUDIT FIX: Add httpOnly + secure flags
+        response.cookies.set('willshop_role', role, {
+          path: '/',
+          maxAge: 86400 * 7,
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+        });
         return response;
       }
     }
@@ -168,12 +197,26 @@ export async function middleware(request: NextRequest) {
       if (isForbidden) {
         console.warn(`[RBAC BLOCK] Livreur user attempted to access forbidden route ${pathname}`);
         const response = NextResponse.redirect(new URL('/delivery/my-deliveries', request.url));
-        response.cookies.set('willshop_role', role, { path: '/', maxAge: 86400 * 7 });
+        // AUDIT FIX: Add httpOnly + secure flags
+        response.cookies.set('willshop_role', role, {
+          path: '/',
+          maxAge: 86400 * 7,
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+        });
         return response;
       }
     }
 
-    supabaseResponse.cookies.set('willshop_role', role, { path: '/', maxAge: 86400 * 7 });
+    // AUDIT FIX: Add httpOnly + secure flags to default cookie refresh
+    supabaseResponse.cookies.set('willshop_role', role, {
+      path: '/',
+      maxAge: 86400 * 7,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    });
     return supabaseResponse;
 
   } catch (err) {

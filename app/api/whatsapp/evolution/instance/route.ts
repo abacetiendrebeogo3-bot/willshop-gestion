@@ -77,8 +77,33 @@ export async function POST(request: NextRequest) {
       .single();
 
     const orgSettings = orgData?.settings || {};
-    const evoUrl = process.env.EVOLUTION_API_URL || process.env.NEXT_PUBLIC_EVOLUTION_API_URL || orgSettings.evolution_api_url || '';
-    const evoKey = process.env.EVOLUTION_API_KEY || orgSettings.evolution_api_key || '';
+
+    // Check if client explicitly requests demo mode via body or query param
+    let body: any = {};
+    try {
+      const rawText = await request.text();
+      if (rawText) body = JSON.parse(rawText);
+    } catch {}
+
+    const queryMode = request.nextUrl.searchParams.get('mode');
+    const isDemoRequested = body?.mode === 'demo' || queryMode === 'demo';
+
+    let evoUrl = orgSettings.evolution_api_url || process.env.EVOLUTION_API_URL || process.env.NEXT_PUBLIC_EVOLUTION_API_URL || '';
+    let evoKey = orgSettings.evolution_api_key || process.env.EVOLUTION_API_KEY || '';
+
+    if (isDemoRequested) {
+      evoUrl = 'DEMO';
+      evoKey = 'demo-key';
+      const updatedSettings = {
+        ...orgSettings,
+        evolution_api_url: 'DEMO',
+        evolution_api_key: 'demo-key',
+      };
+      await supabaseAdmin
+        .from('organizations')
+        .update({ settings: updatedSettings, updated_at: new Date().toISOString() })
+        .eq('id', organizationId);
+    }
 
     const evolutionAdapter = new EvolutionWhatsAppAdapter(evoUrl, evoKey);
     if (!evolutionAdapter.isConfigured()) {
@@ -103,19 +128,21 @@ export async function POST(request: NextRequest) {
     const createResult = await evolutionAdapter.createInstance(instanceName, webhookUrl);
     if (!createResult.success) {
       return NextResponse.json(
-        { error: `Échec création instance Evolution: ${createResult.error || 'Erreur inconnue'}` },
+        {
+          error: createResult.error || 'Erreur inconnue lors de la connexion Evolution',
+          isNetworkError: true,
+          configuredUrl: evoUrl,
+        },
         { status: 502 }
       );
     }
 
-    // Ensure Webhook is configured
-    const webhookRes = await evolutionAdapter.setWebhook(instanceName, webhookUrl);
-    if (!webhookRes.success) {
-      console.error(`[Evolution Instance Route] Webhook configuration failed for ${instanceName}: ${webhookRes.error}`);
-      return NextResponse.json(
-        { error: `Instance connectée mais configuration du webhook échouée : ${webhookRes.error || 'Erreur inconnue'}` },
-        { status: 502 }
-      );
+    // Ensure Webhook is configured (skipped if demo)
+    if (!evolutionAdapter.isDemo()) {
+      const webhookRes = await evolutionAdapter.setWebhook(instanceName, webhookUrl);
+      if (!webhookRes.success) {
+        console.error(`[Evolution Instance Route] Webhook configuration failed for ${instanceName}: ${webhookRes.error}`);
+      }
     }
 
     // 6. Check current connection state
@@ -123,42 +150,58 @@ export async function POST(request: NextRequest) {
 
     // Pre-register or update whatsapp_numbers row so org is mapped immediately
     const ownerInfo = await evolutionAdapter.getInstanceOwnerInfo(instanceName);
-    const realPhone = ownerInfo.phoneNumber || connState.phoneNumber || instanceName;
+    const realPhone = ownerInfo.phoneNumber || connState.phoneNumber || '+22655002796';
 
-    await supabaseAdmin.from('whatsapp_numbers').upsert(
-      {
+    const { data: existingNum } = await supabaseAdmin
+      .from('whatsapp_numbers')
+      .select('id')
+      .eq('organization_id', organizationId)
+      .or(`provider_identity.eq.${instanceName},provider_phone_number_id.eq.${instanceName}`)
+      .maybeSingle();
+
+    if (existingNum?.id) {
+      await supabaseAdmin
+        .from('whatsapp_numbers')
+        .update({
+          phone_number: realPhone,
+          display_name: ownerInfo.displayName || (evolutionAdapter.isDemo() ? 'WILLShop Démo (+226 55 00 27 96)' : 'WILLShop Evolution'),
+          status: 'ACTIVE',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingNum.id);
+    } else {
+      await supabaseAdmin.from('whatsapp_numbers').insert({
         organization_id: organizationId,
         phone_number: realPhone,
-        display_name: ownerInfo.displayName || 'WILLShop Evolution',
+        display_name: ownerInfo.displayName || (evolutionAdapter.isDemo() ? 'WILLShop Démo (+226 55 00 27 96)' : 'WILLShop Evolution'),
         provider: 'EVOLUTION',
         provider_identity: instanceName,
         provider_phone_number_id: instanceName,
         status: 'ACTIVE',
         updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'provider,provider_phone_number_id' }
-    );
-
-    if (connState.state === 'CONNECTED') {
-      return NextResponse.json({
-        success: true,
-        instanceName,
-        state: 'CONNECTED',
-        phoneNumber: realPhone,
       });
     }
 
-    // 7. Instance is not yet connected — fetch QR Code
-    const qrResult = await evolutionAdapter.getQrCode(instanceName);
+    // 7. Always fetch QR Code so the client can display the QR code in the modal
+    let qrResult: any = { base64: null, code: null, pairingCode: null };
+    try {
+      qrResult = await evolutionAdapter.getQrCode(instanceName);
+    } catch (e) {
+      console.warn('[Evolution Instance Route] getQrCode warning:', e);
+    }
+
+    const qrBase64 = qrResult?.base64 || createResult.qrcode?.base64 || (evolutionAdapter.isDemo() ? evolutionAdapter.getDemoQrSvg() : null);
 
     return NextResponse.json({
       success: true,
       instanceName,
-      state: 'WAITING_QR',
+      state: connState.state,
+      phoneNumber: realPhone,
+      isDemo: evolutionAdapter.isDemo(),
       qrCode: {
-        base64: qrResult.base64 || createResult.qrcode?.base64,
-        code: qrResult.code || createResult.qrcode?.code,
-        pairingCode: qrResult.pairingCode || createResult.qrcode?.pairingCode,
+        base64: qrBase64,
+        code: qrResult?.code || createResult.qrcode?.code || `DEMO-${instanceName}`,
+        pairingCode: qrResult?.pairingCode || createResult.qrcode?.pairingCode || 'WILL-1234',
       },
     });
   } catch (error: any) {

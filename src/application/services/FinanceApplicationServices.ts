@@ -58,11 +58,17 @@ export class CreateFinancialAccountService {
       throw new ValidationError('Opening balance cannot be negative.');
     }
 
+    // AUDIT FIX: Read currency from organization settings or env var instead of hardcoded 'XOF'
+    // This enables multi-currency support when organization.settings.currency is populated
+    const currency = (ctx as any).organization?.settings?.currency
+      || process.env.NEXT_PUBLIC_DEFAULT_CURRENCY
+      || 'XOF';
+
     const created = await this.financeRepo.createAccount({
       organizationId: ctx.organizationId,
       name,
       type: type as any,
-      currency: 'XOF',
+      currency,
       openingBalance,
       status: 'ACTIVE',
     });

@@ -1,7 +1,9 @@
 /**
- * WILLShop OS — AI Tools Registry & Executor
- * Application Layer.
- * Defines the 9 AI Tools and executes them against Application Services & Repositories.
+ * WILLShop OS — Sales Agent AI Tools Registry & Executor
+ * AUDIT FIX: Renamed conceptually to SalesAgentToolRegistry to distinguish from AIToolRegistry (CEO Engine).
+ * AIToolsRegistry class kept for backward compatibility with existing imports.
+ * New code should reference it as SalesAgentToolRegistry via the alias export below.
+ * Application Layer — Defines the 9 AI Tools and executes them against Application Services & Repositories.
  * STRICT ARCHITECTURE RULE: NO DIRECT UNGOVERNED DATABASE QUERIES.
  */
 
@@ -657,3 +659,7 @@ export class AIToolsRegistry {
     }
   }
 }
+
+// AUDIT FIX: Semantic alias — use SalesAgentToolRegistry in new code for clarity
+// AIToolsRegistry kept for backward compatibility
+export { AIToolsRegistry as SalesAgentToolRegistry };

@@ -23,7 +23,8 @@ export class AnthropicAIGateway implements IAIGateway {
   constructor(apiKey?: string, defaultModel?: string) {
     const rawKey = apiKey || process.env.ANTHROPIC_API_KEY || '';
     this.apiKey = rawKey.trim().replace(/^["']|["']$/g, '');
-    this.defaultModel = (defaultModel || process.env.ANTHROPIC_MODEL || 'claude-sonnet-5').trim().replace(/^["']|["']$/g, '');
+    // AUDIT FIX: 'claude-sonnet-5' does not exist — use 'claude-sonnet-4-5' or override via ANTHROPIC_MODEL env var
+    this.defaultModel = (defaultModel || process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5').trim().replace(/^["']|["']$/g, '');
   }
 
   async generateCompletion(
@@ -56,13 +57,14 @@ export class AnthropicAIGateway implements IAIGateway {
 
       const payload: Record<string, any> = {
         model: targetModel,
-        max_tokens: request.maxTokens || 400,
+        // AUDIT FIX: 400 tokens was too low for complex CEO briefings — raised to 2048
+        max_tokens: request.maxTokens || 2048,
         system: systemBlock.length > 0 ? systemBlock : systemMessage,
         messages: userMessages,
       };
 
-      // Anthropic temperature restriction check for sonnet-5
-      if (request.temperature !== undefined && !targetModel.includes('claude-sonnet-5')) {
+      // AUDIT FIX: claude-sonnet-4-5 does not support temperature parameter (extended thinking models)
+      if (request.temperature !== undefined && !targetModel.includes('claude-sonnet-4-5')) {
         payload.temperature = request.temperature;
       }
 
@@ -77,25 +79,44 @@ export class AnthropicAIGateway implements IAIGateway {
         payload.tools = toolsWithCache;
       }
 
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'x-api-key': this.apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-beta': 'prompt-caching-2024-07-31',
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+      // AUDIT FIX: Add retry logic for HTTP 529 (Anthropic overloaded) — up to 3 attempts with exponential backoff
+      let response: Response | null = null;
+      let lastError: string = '';
+      const maxRetries = 3;
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'x-api-key': this.apiKey,
+            'anthropic-version': '2023-06-01',
+            'anthropic-beta': 'prompt-caching-2024-07-31',
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => '');
+        if (response.ok) break;
+
+        // Retry only on 529 (overloaded) or 503 (service unavailable)
+        if ((response.status === 529 || response.status === 503) && attempt < maxRetries) {
+          const backoffMs = attempt * 1500;
+          console.warn(`[AnthropicAIGateway] HTTP ${response.status} — retrying in ${backoffMs}ms (attempt ${attempt}/${maxRetries})`);
+          await new Promise((r) => setTimeout(r, backoffMs));
+          continue;
+        }
+
+        lastError = await response.text().catch(() => '');
         console.error(`[AnthropicAIGateway API Error] HTTP ${response.status} ${response.statusText} | Model: ${targetModel}`, {
           httpStatus: response.status,
           statusText: response.statusText,
-          errorBody: errorText,
+          errorBody: lastError,
         });
-        throw new Error(`Anthropic API HTTP ${response.status}: ${errorText || response.statusText}`);
+        throw new Error(`Anthropic API HTTP ${response.status}: ${lastError || response.statusText}`);
+      }
+
+      if (!response || !response.ok) {
+        lastError = response ? await response.text().catch(() => '') : 'No response';
+        throw new Error(`Anthropic API failed after ${maxRetries} attempts: ${lastError}`);
       }
 
       const resData = await response.json();

@@ -76,4 +76,27 @@ describe('Evolution WhatsApp Real QR & Instance Management Test Suite', () => {
     assert.strictEqual(event?.fromMe, true);
     assert.strictEqual(event?.textBody, 'Bonjour Moussa, je prends le relais.');
   });
+
+  test('EvolutionWhatsAppAdapter supports Demo mode simulation seamlessly', async () => {
+    const demoAdapter = new EvolutionWhatsAppAdapter('DEMO', '');
+    assert.strictEqual(demoAdapter.isDemo(), true);
+    assert.strictEqual(demoAdapter.isConfigured(), true);
+    assert.strictEqual(demoAdapter.getConfigError(), null);
+
+    const instResult = await demoAdapter.createInstance('ws_org_demo1234');
+    assert.strictEqual(instResult.success, true);
+    assert.strictEqual(instResult.status, 'CONNECTED');
+    assert.ok(instResult.qrcode?.base64);
+
+    const state = await demoAdapter.getConnectionState('ws_org_demo1234');
+    assert.strictEqual(state.state, 'CONNECTED');
+    assert.strictEqual(state.phoneNumber, '+22655002796');
+
+    const sendRes = await demoAdapter.sendTextMessage('ws_org_demo1234', {
+      toPhoneNumber: '+22670000000',
+      messageText: 'Test message démo',
+    });
+    assert.strictEqual(sendRes.status, 'SENT');
+    assert.ok(sendRes.externalMessageId?.startsWith('DEMO-MSG-'));
+  });
 });

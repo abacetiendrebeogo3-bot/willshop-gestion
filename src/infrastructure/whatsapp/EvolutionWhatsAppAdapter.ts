@@ -22,7 +22,13 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
     this.apiKey = rawKey.trim().replace(/^["']|["']$/g, '');
   }
 
+  public isDemo(): boolean {
+    const upper = this.baseUrl.toUpperCase();
+    return upper === 'DEMO' || upper === 'MOCK' || upper === 'SIMULATION' || process.env.NEXT_PUBLIC_DEMO_WHATSAPP === 'true';
+  }
+
   public isConfigured(): boolean {
+    if (this.isDemo()) return true;
     const configured = Boolean(this.baseUrl && this.apiKey);
     if (!configured) {
       console.warn(`[EVOLUTION_API_CONFIG] Unconfigured: baseUrl="${this.baseUrl}", apiKeyPresent=${Boolean(this.apiKey)}`);
@@ -31,6 +37,7 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
   }
 
   public getConfigError(): string | null {
+    if (this.isDemo()) return null;
     if (!this.baseUrl && !this.apiKey) {
       return 'Configuration serveur Evolution API manquante (EVOLUTION_API_URL et EVOLUTION_API_KEY non définies dans Vercel).';
     }
@@ -43,12 +50,91 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
     return null;
   }
 
+  private formatNetworkError(err: any): string {
+    const msg = err?.message || '';
+    const causeCode = err?.cause?.code || err?.code || '';
+    if (causeCode === 'ENOTFOUND' || msg.includes('ENOTFOUND') || msg.includes('getaddrinfo')) {
+      return `Serveur Evolution inaccessible (${this.baseUrl}) : nom d'hôte ou domaine introuvable (DNS ENOTFOUND). Vérifiez l'adresse ou activez la passerelle Démo.`;
+    }
+    if (causeCode === 'ECONNREFUSED' || msg.includes('ECONNREFUSED')) {
+      return `Connexion refusée par le serveur Evolution (${this.baseUrl}) : aucun service actif sur ce port.`;
+    }
+    if (causeCode === 'ETIMEDOUT' || msg.includes('timeout') || msg.includes('timed out')) {
+      return `Délai d'attente dépassé pour le serveur Evolution (${this.baseUrl}). Le serveur met trop de temps à répondre.`;
+    }
+    if (msg.includes('fetch failed')) {
+      return `Impossible d'établir la connexion avec Evolution API (${this.baseUrl}) : serveur hors ligne ou inaccessible.`;
+    }
+    return msg || 'Erreur réseau inconnue avec Evolution API';
+  }
+
+  public getDemoQrSvg(): string {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+      <rect width="240" height="240" fill="#ffffff" rx="16"/>
+      <rect x="20" y="20" width="50" height="50" fill="#1F1917" rx="6"/>
+      <rect x="28" y="28" width="34" height="34" fill="#ffffff" rx="4"/>
+      <rect x="36" y="36" width="18" height="18" fill="#800020" rx="2"/>
+      <rect x="170" y="20" width="50" height="50" fill="#1F1917" rx="6"/>
+      <rect x="178" y="28" width="34" height="34" fill="#ffffff" rx="4"/>
+      <rect x="186" y="36" width="18" height="18" fill="#800020" rx="2"/>
+      <rect x="20" y="170" width="50" height="50" fill="#1F1917" rx="6"/>
+      <rect x="28" y="178" width="34" height="34" fill="#ffffff" rx="4"/>
+      <rect x="36" y="186" width="18" height="18" fill="#800020" rx="2"/>
+      <!-- QR pattern modules -->
+      <rect x="80" y="25" width="10" height="10" fill="#1F1917"/>
+      <rect x="100" y="25" width="20" height="10" fill="#1F1917"/>
+      <rect x="130" y="25" width="10" height="10" fill="#1F1917"/>
+      <rect x="150" y="25" width="10" height="10" fill="#1F1917"/>
+      <rect x="80" y="45" width="30" height="10" fill="#1F1917"/>
+      <rect x="120" y="45" width="20" height="10" fill="#800020"/>
+      <rect x="150" y="45" width="10" height="10" fill="#1F1917"/>
+      <rect x="80" y="80" width="15" height="15" fill="#1F1917"/>
+      <rect x="105" y="80" width="30" height="15" fill="#1F1917"/>
+      <rect x="145" y="80" width="15" height="15" fill="#800020"/>
+      <rect x="170" y="80" width="15" height="15" fill="#1F1917"/>
+      <rect x="195" y="80" width="25" height="15" fill="#1F1917"/>
+      <rect x="25" y="80" width="15" height="15" fill="#1F1917"/>
+      <rect x="50" y="80" width="20" height="15" fill="#1F1917"/>
+      <rect x="25" y="105" width="35" height="15" fill="#1F1917"/>
+      <rect x="70" y="105" width="25" height="15" fill="#800020"/>
+      <rect x="105" y="105" width="30" height="30" fill="#25D366" rx="8"/>
+      <!-- WhatsApp Icon in center -->
+      <path d="M120 112 C115 112 111 116 111 121 C111 123 112 125 113 126 L112 129 L115 128 C116 129 118 130 120 130 C125 130 129 126 129 121 C129 116 125 112 120 112 Z" fill="#ffffff"/>
+      <rect x="145" y="105" width="25" height="15" fill="#1F1917"/>
+      <rect x="180" y="105" width="40" height="15" fill="#1F1917"/>
+      <rect x="25" y="130" width="20" height="15" fill="#1F1917"/>
+      <rect x="55" y="130" width="15" height="15" fill="#1F1917"/>
+      <rect x="80" y="145" width="40" height="15" fill="#1F1917"/>
+      <rect x="130" y="145" width="25" height="15" fill="#800020"/>
+      <rect x="165" y="145" width="20" height="15" fill="#1F1917"/>
+      <rect x="195" y="145" width="25" height="15" fill="#1F1917"/>
+      <rect x="80" y="170" width="20" height="15" fill="#1F1917"/>
+      <rect x="110" y="170" width="30" height="15" fill="#1F1917"/>
+      <rect x="150" y="170" width="20" height="15" fill="#800020"/>
+      <rect x="180" y="170" width="40" height="15" fill="#1F1917"/>
+      <rect x="80" y="195" width="35" height="25" fill="#1F1917"/>
+      <rect x="125" y="195" width="25" height="25" fill="#1F1917"/>
+      <rect x="160" y="195" width="30" height="25" fill="#1F1917"/>
+      <rect x="200" y="195" width="20" height="25" fill="#800020"/>
+    </svg>`;
+    const base64 = Buffer.from(svg).toString('base64');
+    return `data:image/svg+xml;base64,${base64}`;
+  }
+
   async sendTextMessage(
     providerPhoneNumberId: string,
     dto: SendTextMessageDTO
   ): Promise<WhatsAppSendResult> {
     const cleanTo = dto.toPhoneNumber.replace(/[^\d]/g, '');
     const instance = providerPhoneNumberId;
+
+    if (this.isDemo()) {
+      console.log(`[DEMO_WHATSAPP] Outbound message sent to +${cleanTo}: "${dto.messageText}"`);
+      return {
+        externalMessageId: `DEMO-MSG-${Date.now()}`,
+        status: 'SENT',
+      };
+    }
 
     try {
       const response = await fetch(`${this.baseUrl}/message/sendText/${instance}`, {
@@ -70,7 +156,7 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
         return {
           externalMessageId: `EVO-ERR-${Date.now()}`,
           status: 'FAILED',
-          errorCode: `HTTP_${response.status}`,
+          errorCode: `HTTP_${response.status}: ${errorText.slice(0, 100)}`,
         };
       }
 
@@ -82,11 +168,12 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
         status: 'SENT',
       };
     } catch (err: any) {
-      console.error('Evolution API sendTextMessage exception:', err);
+      const formatted = this.formatNetworkError(err);
+      console.error('Evolution API sendTextMessage exception:', formatted);
       return {
         externalMessageId: `EVO-ERR-${Date.now()}`,
         status: 'FAILED',
-        errorCode: err.message,
+        errorCode: formatted,
       };
     }
   }
@@ -97,6 +184,14 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
   ): Promise<WhatsAppSendResult> {
     const cleanTo = dto.toPhoneNumber.replace(/[^\d]/g, '');
     const instance = providerPhoneNumberId;
+
+    if (this.isDemo()) {
+      console.log(`[DEMO_WHATSAPP] Outbound media sent to +${cleanTo}: ${dto.mediaUrl}`);
+      return {
+        externalMessageId: `DEMO-MEDIA-${Date.now()}`,
+        status: 'SENT',
+      };
+    }
 
     try {
       const response = await fetch(`${this.baseUrl}/message/sendMedia/${instance}`, {
@@ -121,10 +216,11 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
       });
 
       if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
         return {
           externalMessageId: `EVO-ERR-${Date.now()}`,
           status: 'FAILED',
-          errorCode: `HTTP_${response.status}`,
+          errorCode: `HTTP_${response.status}: ${errorText.slice(0, 100)}`,
         };
       }
 
@@ -137,7 +233,7 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
       return {
         externalMessageId: `EVO-ERR-${Date.now()}`,
         status: 'FAILED',
-        errorCode: err.message,
+        errorCode: this.formatNetworkError(err),
       };
     }
   }
@@ -146,6 +242,7 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
     providerPhoneNumberId: string,
     externalMessageId: string
   ): Promise<boolean> {
+    if (this.isDemo()) return true;
     try {
       const instance = providerPhoneNumberId;
       const response = await fetch(`${this.baseUrl}/chat/markMessageAsRead/${instance}`, {
@@ -166,15 +263,15 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
   }
 
   verifyWebhookSignature(rawBody: string, signature: string, secret: string): boolean {
+    if (this.isDemo()) return true;
     const expectedKey = (secret || this.apiKey || '').trim();
-    // If no signature header was provided by Evolution API, accept payload (Evolution v2 webhook default behavior)
     if (!signature || !signature.trim()) return true;
     if (!expectedKey) return true;
     return signature === expectedKey || signature.includes(expectedKey) || expectedKey.includes(signature);
   }
 
   /**
-   * Creates or fetches an instance on Evolution API v2.
+   * Creates or fetches an instance on Evolution API v2 or simulation.
    */
   async createInstance(instanceName: string, webhookUrl?: string): Promise<{
     success: boolean;
@@ -182,7 +279,23 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
     status?: string;
     qrcode?: { code?: string; base64?: string; pairingCode?: string };
     error?: string;
+    isDemo?: boolean;
   }> {
+    if (this.isDemo()) {
+      console.log(`[DEMO_WHATSAPP] 🚀 Created simulated instance '${instanceName}'`);
+      return {
+        success: true,
+        instanceName,
+        status: 'CONNECTED',
+        isDemo: true,
+        qrcode: {
+          code: `DEMO-${instanceName}`,
+          base64: this.getDemoQrSvg(),
+          pairingCode: 'DEMO-1234',
+        },
+      };
+    }
+
     if (!this.isConfigured()) {
       console.warn(`[EVOLUTION_API] createInstance aborted — missing configuration.`);
       return { success: false, instanceName, error: this.getConfigError()! };
@@ -213,7 +326,7 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
           console.log(`[EVOLUTION_API] Instance '${instanceName}' already exists.`);
           return { success: true, instanceName, status: 'EXISTS' };
         }
-        return { success: false, instanceName, error: `HTTP_${response.status}: ${errText}` };
+        return { success: false, instanceName, error: `HTTP_${response.status}: ${errText.slice(0, 150)}` };
       }
 
       const resData = await response.json();
@@ -238,8 +351,9 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
         },
       };
     } catch (err: any) {
-      console.error(`[EVOLUTION_API] createInstance exception:`, err);
-      return { success: false, instanceName, error: err.message };
+      const formatted = this.formatNetworkError(err);
+      console.error(`[EVOLUTION_API] createInstance exception:`, formatted);
+      return { success: false, instanceName, error: formatted };
     }
   }
 
@@ -252,7 +366,18 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
     ownerJid?: string;
     phoneNumber?: string;
     error?: string;
+    isDemo?: boolean;
   }> {
+    if (this.isDemo()) {
+      return {
+        state: 'CONNECTED',
+        rawState: 'open',
+        phoneNumber: '+22655002796',
+        ownerJid: '22655002796@s.whatsapp.net',
+        isDemo: true,
+      };
+    }
+
     if (!this.isConfigured()) {
       return { state: 'ERROR', error: this.getConfigError()! };
     }
@@ -296,8 +421,9 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
 
       return { state: 'DISCONNECTED', rawState, ownerJid, phoneNumber };
     } catch (err: any) {
-      console.error(`[EVOLUTION_API] getConnectionState exception:`, err);
-      return { state: 'ERROR', error: err.message };
+      const formatted = this.formatNetworkError(err);
+      console.error(`[EVOLUTION_API] getConnectionState exception:`, formatted);
+      return { state: 'ERROR', error: formatted };
     }
   }
 
@@ -311,6 +437,15 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
     pairingCode?: string;
     error?: string;
   }> {
+    if (this.isDemo()) {
+      return {
+        success: true,
+        base64: this.getDemoQrSvg(),
+        code: `DEMO-${instanceName}`,
+        pairingCode: 'DEMO-1234',
+      };
+    }
+
     console.log(`[EVOLUTION_API] 📷 STEP 3: Requesting QR Code for instance '${instanceName}'...`);
     try {
       const response = await fetch(`${this.baseUrl}/instance/connect/${instanceName}`, {
@@ -320,7 +455,7 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
       if (!response.ok) {
         const errText = await response.text().catch(() => '');
         console.warn(`[EVOLUTION_API] instance/connect HTTP ${response.status}: ${errText}`);
-        return { success: false, error: `HTTP_${response.status}: ${errText}` };
+        return { success: false, error: `HTTP_${response.status}: ${errText.slice(0, 100)}` };
       }
 
       const data = await response.json();
@@ -331,8 +466,9 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
       console.log(`[EVOLUTION_API] QR Code fetched successfully (hasBase64=${Boolean(base64)})`);
       return { success: true, base64, code, pairingCode };
     } catch (err: any) {
-      console.error(`[EVOLUTION_API] getQrCode exception:`, err);
-      return { success: false, error: err.message };
+      const formatted = this.formatNetworkError(err);
+      console.error(`[EVOLUTION_API] getQrCode exception:`, formatted);
+      return { success: false, error: formatted };
     }
   }
 
@@ -340,6 +476,10 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
    * Sets up or updates the webhook on Evolution API.
    */
   async setWebhook(instanceName: string, webhookUrl: string): Promise<{ success: boolean; error?: string }> {
+    if (this.isDemo()) {
+      return { success: true };
+    }
+
     console.log(`[EVOLUTION_API] 🔗 STEP 4: Setting webhook for instance '${instanceName}' -> ${webhookUrl}`);
     try {
       const response = await fetch(`${this.baseUrl}/webhook/set/${instanceName}`, {
@@ -369,17 +509,18 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
         console.error(`[EVOLUTION_API] setWebhook HTTP ${response.status} for instance '${instanceName}':`, errText);
         return {
           success: false,
-          error: `HTTP_${response.status}: ${errText}`,
+          error: `HTTP_${response.status}: ${errText.slice(0, 100)}`,
         };
       }
 
       console.log(`[EVOLUTION_API] Webhook set successfully for instance '${instanceName}'`);
       return { success: true };
     } catch (err: any) {
-      console.error(`[EVOLUTION_API] setWebhook exception:`, err);
+      const formatted = this.formatNetworkError(err);
+      console.error(`[EVOLUTION_API] setWebhook exception:`, formatted);
       return {
         success: false,
-        error: err.message || 'Erreur réseau/inconnue lors de la configuration du webhook',
+        error: formatted,
       };
     }
   }
@@ -388,6 +529,10 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
    * Logs out or deletes an instance on Evolution API.
    */
   async logoutInstance(instanceName: string): Promise<boolean> {
+    if (this.isDemo()) {
+      console.log(`[DEMO_WHATSAPP] Logged out simulated instance '${instanceName}'`);
+      return true;
+    }
     try {
       const response = await fetch(`${this.baseUrl}/instance/logout/${instanceName}`, {
         method: 'DELETE',
@@ -407,6 +552,14 @@ export class EvolutionWhatsAppAdapter implements IWhatsAppProvider {
     displayName?: string;
     ownerJid?: string;
   }> {
+    if (this.isDemo()) {
+      return {
+        phoneNumber: '+22655002796',
+        ownerJid: '22655002796@s.whatsapp.net',
+        displayName: 'WILLShop Démo (+226 55 00 27 96)',
+      };
+    }
+
     try {
       const stateRes = await this.getConnectionState(instanceName);
       if (stateRes.phoneNumber) {

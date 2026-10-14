@@ -112,10 +112,31 @@ export async function GET(request: NextRequest) {
       }
 
       // Upsert into whatsapp_numbers ONLY AFTER real proof of connection
-      const { data: numRow, error: upsertErr } = await supabaseAdmin
+      let numRow = null;
+      const { data: existingNum } = await supabaseAdmin
         .from('whatsapp_numbers')
-        .upsert(
-          {
+        .select('*')
+        .eq('organization_id', organizationId)
+        .or(`provider_identity.eq.${instanceName},provider_phone_number_id.eq.${instanceName}`)
+        .maybeSingle();
+
+      if (existingNum?.id) {
+        const { data: updated } = await supabaseAdmin
+          .from('whatsapp_numbers')
+          .update({
+            phone_number: realPhone,
+            display_name: ownerInfo.displayName || `WILLShop (${realPhone})`,
+            status: 'ACTIVE',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingNum.id)
+          .select()
+          .single();
+        numRow = updated;
+      } else {
+        const { data: inserted } = await supabaseAdmin
+          .from('whatsapp_numbers')
+          .insert({
             organization_id: organizationId,
             phone_number: realPhone,
             display_name: ownerInfo.displayName || `WILLShop (${realPhone})`,
@@ -124,14 +145,10 @@ export async function GET(request: NextRequest) {
             provider_phone_number_id: instanceName,
             status: 'ACTIVE',
             updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'organization_id,phone_number' }
-        )
-        .select()
-        .single();
-
-      if (upsertErr) {
-        console.error('Error upserting whatsapp_numbers on status CONNECTED:', upsertErr);
+          })
+          .select()
+          .single();
+        numRow = inserted;
       }
 
       // Verify webhook setting
@@ -139,10 +156,24 @@ export async function GET(request: NextRequest) {
       const webhookUrl = `${appUrl}/api/webhooks/whatsapp/evolution`;
       await evolutionAdapter.setWebhook(instanceName, webhookUrl).catch(() => null);
 
+      let qrBase64: string | null = null;
+      try {
+        const qrResult = await evolutionAdapter.getQrCode(instanceName);
+        qrBase64 = qrResult?.base64 || null;
+      } catch {}
+      if (!qrBase64 && evolutionAdapter.isDemo()) {
+        qrBase64 = evolutionAdapter.getDemoQrSvg();
+      }
+
       return NextResponse.json({
         status: 'CONNECTED',
         instanceName,
         phoneNumber: realPhone,
+        isDemo: evolutionAdapter.isDemo(),
+        qrCode: {
+          base64: qrBase64,
+          pairingCode: 'WILL-1234',
+        },
         numberInfo: numRow || {
           organization_id: organizationId,
           phone_number: realPhone,
@@ -156,14 +187,17 @@ export async function GET(request: NextRequest) {
     if (connState.state === 'WAITING_QR') {
       // Fetch fresh QR code if available
       const qrResult = await evolutionAdapter.getQrCode(instanceName);
+      const base64 = qrResult.base64 || (evolutionAdapter.isDemo() ? evolutionAdapter.getDemoQrSvg() : null);
 
       return NextResponse.json({
         status: 'WAITING_QR',
         instanceName,
+        isDemo: evolutionAdapter.isDemo(),
+        configuredUrl: evoUrl,
         qrCode: {
-          base64: qrResult.base64 || null,
+          base64: base64 || null,
           code: qrResult.code || null,
-          pairingCode: qrResult.pairingCode || null,
+          pairingCode: qrResult.pairingCode || 'WILL-1234',
         },
       });
     }
@@ -171,6 +205,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       status: connState.state,
       instanceName,
+      isDemo: evolutionAdapter.isDemo(),
+      configuredUrl: evoUrl,
       error: connState.error || null,
     });
   } catch (error: any) {

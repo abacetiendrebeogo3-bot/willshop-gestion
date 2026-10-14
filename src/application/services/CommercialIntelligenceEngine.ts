@@ -494,7 +494,7 @@ export class CommercialIntelligenceEngine {
       return {
         organizationId,
         generatedAt: new Date().toISOString(),
-        summaryHeadline: `Bonjour Willy 👋 Voici la synthèse opérationnelle de WILLShop pour le ${todayStr}.`,
+        summaryHeadline: `Bonjour 👋 Voici la synthèse opérationnelle de WILLShop pour le ${todayStr}.`,
         salesStats: {
           totalOrdersYesterday,
           totalRevenueXof,
@@ -524,7 +524,7 @@ export class CommercialIntelligenceEngine {
       return {
         organizationId,
         generatedAt: new Date().toISOString(),
-        summaryHeadline: `Bonjour Willy 👋 Synthèse disponible sous réserve de connexion réseau.`,
+        summaryHeadline: `Bonjour 👋 Synthèse disponible sous réserve de connexion réseau.`,
         salesStats: {
           totalOrdersYesterday: 0,
           totalRevenueXof: 0,

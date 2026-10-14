@@ -90,12 +90,24 @@ export class OrganizationContextService {
   }
 }
 
-// Module-level mock context store for server application services & test suites
-let mockContextState: { userId: string; organizationId: string; role: UserRole } = {
-  userId: 'user-ceo-wilty',
-  organizationId: 'org-willshop-001',
-  role: 'OWNER',
-};
+// AUDIT FIX: Module-level context store.
+// - In tests/dev: use setMockContext() to set the context before each test.
+// - In production: getOrganizationContext() MUST be called with a real userId via the API route layer.
+//   If this function is called without setMockContext() having been called first in production,
+//   it will throw to prevent silent mock context leakage.
+let mockContextState: { userId: string; organizationId: string; role: UserRole } | null = null;
+
+// Sentinel to detect if we're running in a test environment
+const IS_TEST_ENV = process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID !== undefined;
+
+// Default context only for test environments — never for production
+if (IS_TEST_ENV) {
+  mockContextState = {
+    userId: 'user-ceo-wilty',
+    organizationId: 'org-willshop-001',
+    role: 'OWNER',
+  };
+}
 
 export function setMockContext(ctx: { userId: string; organizationId: string; role: UserRole }): void {
   mockContextState = ctx;
@@ -105,12 +117,25 @@ export function setMockOrgContext(ctx: { userId: string; organizationId: string;
   mockContextState = ctx;
 }
 
+/**
+ * AUDIT FIX: getOrganizationContext() now throws in production if no mock context was set.
+ * Application services should pass the authenticated userId from the API route layer
+ * via setMockContext() (in tests) or via OrganizationContextService.getOrganizationContext() (in prod).
+ */
 export async function getOrganizationContext(): Promise<{
   userId: string;
   organizationId: string;
   role: UserRole;
   permissions: ActionPermission[];
 }> {
+  if (!mockContextState) {
+    // AUDIT FIX: In production, if no context was set, fail loudly instead of using a hardcoded mock
+    throw new ForbiddenError(
+      '[OrganizationContextService] No organization context has been set. ' +
+      'API routes must call setMockContext() with the authenticated user context before invoking application services.'
+    );
+  }
+
   const role = mockContextState.role || 'OWNER';
   const permissions = ROLE_PERMISSIONS[role] || [];
   return {
@@ -127,3 +152,4 @@ export function verifyPermission(role: UserRole, action: ActionPermission): void
     throw new ForbiddenError(`Role '${role}' does not have permission '${action}'`);
   }
 }
+

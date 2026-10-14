@@ -72,6 +72,20 @@ export default function NewOrderPage() {
 
   useEffect(() => {
     fetchInitialData();
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const cId = params.get("customerId");
+      const cPhone = params.get("phone");
+      const cName = params.get("name");
+      if (cId && (cPhone || cName)) {
+        setSelectedCustomer({
+          id: cId,
+          name: cName || cPhone || "Client",
+          phone: cPhone || "",
+        });
+        if (cPhone) setPhoneSearch(cPhone);
+      }
+    }
   }, []);
 
   // Live phone search

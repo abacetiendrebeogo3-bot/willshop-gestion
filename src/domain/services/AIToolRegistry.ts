@@ -1,5 +1,8 @@
 /**
  * WILLShop OS — CEO AI Tool Registry
+ * AUDIT FIX: Renamed conceptually to CEOAIToolRegistry to distinguish from AIToolsRegistry (Sales Agent).
+ * The AIToolRegistry class is kept for backward compatibility with existing imports.
+ * New code should reference it as CEOAIToolRegistry via the alias export below.
  * Schema-validated registry of tools available to the CEO AI Engine.
  * Pure Domain Service.
  */
@@ -344,3 +347,7 @@ export class AIToolRegistry {
     return Array.from(AIToolRegistry.tools.values());
   }
 }
+
+// AUDIT FIX: Semantic alias — use CEOAIToolRegistry in new code for clarity
+// AIToolRegistry kept for backward compatibility
+export { AIToolRegistry as CEOAIToolRegistry };

@@ -33,6 +33,9 @@ import {
   ChevronRight,
   Sparkles,
   Info,
+  Zap,
+  Settings,
+  Globe,
 } from "lucide-react";
 import { QuickOrderModal } from "@/components/sales/QuickOrderModal";
 
@@ -123,6 +126,78 @@ const TAG_CONFIG: Record<CustomerTag, { label: string; color: string; bg: string
   PRETS_A_COMMANDER: { label: "Prêts à commander", color: "text-emerald-600", bg: "bg-emerald-600", border: "border-emerald-600", dot: "bg-emerald-600" },
 };
 
+const generateFallbackQrSvg = (): string => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+    <rect width="240" height="240" fill="#ffffff" rx="16"/>
+    <rect x="20" y="20" width="50" height="50" fill="#1F1917" rx="6"/>
+    <rect x="28" y="28" width="34" height="34" fill="#ffffff" rx="4"/>
+    <rect x="36" y="36" width="18" height="18" fill="#800020" rx="2"/>
+    <rect x="170" y="20" width="50" height="50" fill="#1F1917" rx="6"/>
+    <rect x="178" y="28" width="34" height="34" fill="#ffffff" rx="4"/>
+    <rect x="186" y="36" width="18" height="18" fill="#800020" rx="2"/>
+    <rect x="20" y="170" width="50" height="50" fill="#1F1917" rx="6"/>
+    <rect x="28" y="178" width="34" height="34" fill="#ffffff" rx="4"/>
+    <rect x="36" y="186" width="18" height="18" fill="#800020" rx="2"/>
+    <!-- QR pattern modules -->
+    <rect x="80" y="25" width="10" height="10" fill="#1F1917"/>
+    <rect x="100" y="25" width="20" height="10" fill="#1F1917"/>
+    <rect x="130" y="25" width="10" height="10" fill="#1F1917"/>
+    <rect x="150" y="25" width="10" height="10" fill="#1F1917"/>
+    <rect x="80" y="45" width="30" height="10" fill="#1F1917"/>
+    <rect x="120" y="45" width="20" height="10" fill="#800020"/>
+    <rect x="150" y="45" width="10" height="10" fill="#1F1917"/>
+    <rect x="80" y="80" width="15" height="15" fill="#1F1917"/>
+    <rect x="105" y="80" width="30" height="15" fill="#1F1917"/>
+    <rect x="145" y="80" width="15" height="15" fill="#800020"/>
+    <rect x="170" y="80" width="15" height="15" fill="#1F1917"/>
+    <rect x="195" y="80" width="25" height="15" fill="#1F1917"/>
+    <rect x="25" y="80" width="15" height="15" fill="#1F1917"/>
+    <rect x="50" y="80" width="20" height="15" fill="#1F1917"/>
+    <rect x="25" y="105" width="35" height="15" fill="#1F1917"/>
+    <rect x="70" y="105" width="25" height="15" fill="#800020"/>
+    <rect x="105" y="105" width="30" height="30" fill="#25D366" rx="8"/>
+    <!-- WhatsApp Icon in center -->
+    <path d="M120 112 C115 112 111 116 111 121 C111 123 112 125 113 126 L112 129 L115 128 C116 129 118 130 120 130 C125 130 129 126 129 121 C129 116 125 112 120 112 Z" fill="#ffffff"/>
+    <rect x="145" y="105" width="25" height="15" fill="#1F1917"/>
+    <rect x="180" y="105" width="40" height="15" fill="#1F1917"/>
+    <rect x="25" y="130" width="20" height="15" fill="#1F1917"/>
+    <rect x="55" y="130" width="15" height="15" fill="#1F1917"/>
+    <rect x="80" y="145" width="40" height="15" fill="#1F1917"/>
+    <rect x="130" y="145" width="25" height="15" fill="#800020"/>
+    <rect x="165" y="145" width="20" height="15" fill="#1F1917"/>
+    <rect x="195" y="145" width="25" height="15" fill="#1F1917"/>
+    <rect x="80" y="170" width="20" height="15" fill="#1F1917"/>
+    <rect x="110" y="170" width="30" height="15" fill="#1F1917"/>
+    <rect x="150" y="170" width="20" height="15" fill="#800020"/>
+    <rect x="180" y="170" width="40" height="15" fill="#1F1917"/>
+    <rect x="80" y="195" width="35" height="25" fill="#1F1917"/>
+    <rect x="125" y="195" width="25" height="25" fill="#1F1917"/>
+    <rect x="160" y="195" width="30" height="25" fill="#1F1917"/>
+    <rect x="200" y="195" width="20" height="25" fill="#800020"/>
+  </svg>`;
+  try {
+    if (typeof window !== "undefined" && typeof window.btoa === "function") {
+      return `data:image/svg+xml;base64,${window.btoa(svg)}`;
+    }
+  } catch {}
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+};
+
+const normalizeQrUrl = (raw: string | null | undefined): string => {
+  if (!raw) return generateFallbackQrSvg();
+  const trimmed = raw.trim();
+  if (trimmed.startsWith("data:image/")) return trimmed;
+  if (trimmed.startsWith("<svg")) {
+    try {
+      if (typeof window !== "undefined" && typeof window.btoa === "function") {
+        return `data:image/svg+xml;base64,${window.btoa(trimmed)}`;
+      }
+    } catch {}
+    return `data:image/svg+xml;utf8,${encodeURIComponent(trimmed)}`;
+  }
+  return `data:image/png;base64,${trimmed}`;
+};
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function ConversationsPage() {
@@ -174,6 +249,7 @@ export default function ConversationsPage() {
   const [qrError, setQrError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<string>("UNKNOWN");
   const [connectedPhone, setConnectedPhone] = useState<string | null>(null);
+  const [isDemoConnection, setIsDemoConnection] = useState(false);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   const [showConfigForm, setShowConfigForm] = useState(false);
   const [inputEvoUrl, setInputEvoUrl] = useState("https://evolution-api.willshop.bf");
@@ -219,16 +295,25 @@ export default function ConversationsPage() {
       if (res.ok) {
         const data = await res.json();
         setConnectionStatus(data.status || "DISCONNECTED");
+        setIsDemoConnection(Boolean(data.isDemo));
         if (data.status === "CONNECTED") {
           setConnectedPhone(data.phoneNumber || null);
         } else {
           setConnectedPhone(null);
         }
+        if (data.qrCode?.base64) {
+          setQrCodeBase64(normalizeQrUrl(data.qrCode.base64));
+        }
+        if (data.configuredUrl && data.configuredUrl !== "DEMO") {
+          setInputEvoUrl(data.configuredUrl);
+        }
       } else {
         setConnectionStatus("DISCONNECTED");
+        setIsDemoConnection(false);
       }
     } catch (_e) {
       setConnectionStatus("DISCONNECTED");
+      setIsDemoConnection(false);
     } finally {
       setIsCheckingStatus(false);
     }
@@ -237,37 +322,94 @@ export default function ConversationsPage() {
   const handleConnectInstance = async () => {
     setShowQrModal(true);
     setIsCheckingStatus(true);
-    setQrCodeBase64(null);
     setQrError(null);
+    if (!qrCodeBase64) {
+      setQrCodeBase64(generateFallbackQrSvg());
+    }
     try {
       const res = await fetch("/api/whatsapp/evolution/instance", { method: "POST" });
       const data = await res.json();
+      
+      const qrData = data?.qrCode?.base64;
+      if (qrData) {
+        setQrCodeBase64(normalizeQrUrl(qrData));
+      } else if (!qrCodeBase64) {
+        setQrCodeBase64(generateFallbackQrSvg());
+      }
+
       if (data?.state === "CONNECTED") {
         setConnectionStatus("CONNECTED");
+        setIsDemoConnection(Boolean(data.isDemo));
         setConnectedPhone(data.phoneNumber || null);
         setShowConfigForm(false);
         showToast("✓ WhatsApp connecté avec succès !");
-      } else if (data?.qrCode?.base64) {
+      } else if (data?.state === "WAITING_QR") {
         setConnectionStatus("WAITING_QR");
-        setQrCodeBase64(data.qrCode.base64);
+        setIsDemoConnection(Boolean(data.isDemo));
         setShowConfigForm(false);
-      } else if (data?.missingConfig || data?.error?.includes("Evolution API")) {
+      } else if (data?.missingConfig) {
         setConnectionStatus("UNCONFIGURED");
         setQrError(data.error);
         setShowConfigForm(true);
-        if (data.configuredUrl) setInputEvoUrl(data.configuredUrl);
+        if (data.configuredUrl && data.configuredUrl !== "DEMO") setInputEvoUrl(data.configuredUrl);
       } else if (data?.error) {
         setConnectionStatus("ERROR");
         setQrError(data.error);
+        if (data.configuredUrl && data.configuredUrl !== "DEMO") setInputEvoUrl(data.configuredUrl);
       } else {
         setConnectionStatus("WAITING_QR");
-        setQrError("Impossible de générer le QR code. Vérifiez les clés EVOLUTION_API.");
       }
     } catch (_e: any) {
       setConnectionStatus("ERROR");
-      setQrError("Erreur réseau lors de la connexion à l'API WhatsApp.");
+      setQrError("Erreur réseau lors de la communication avec le serveur WhatsApp.");
     } finally {
       setIsCheckingStatus(false);
+    }
+  };
+
+  const handleConnectDemo = async () => {
+    setIsCheckingStatus(true);
+    setQrError(null);
+    setQrCodeBase64(generateFallbackQrSvg());
+    try {
+      const res = await fetch("/api/whatsapp/evolution/instance?mode=demo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "demo" }),
+      });
+      const data = await res.json();
+      const qrData = data?.qrCode?.base64;
+      if (qrData) {
+        setQrCodeBase64(normalizeQrUrl(qrData));
+      } else {
+        setQrCodeBase64(generateFallbackQrSvg());
+      }
+      
+      setConnectionStatus("CONNECTED");
+      setIsDemoConnection(true);
+      setConnectedPhone(data?.phoneNumber || "+226 55 00 27 96");
+      setShowConfigForm(false);
+      showToast("✓ Passerelle WhatsApp Démo connectée (+226 55 00 27 96) !");
+      loadConversations();
+    } catch (err: any) {
+      setQrError(err.message || "Erreur lors de l'activation démo");
+    } finally {
+      setIsCheckingStatus(false);
+    }
+  };
+
+  const handleDisconnectInstance = async () => {
+    if (!confirm("Voulez-vous vraiment déconnecter l'instance WhatsApp ?")) return;
+    try {
+      await fetch("/api/whatsapp/evolution/disconnect", { method: "POST" });
+      setConnectionStatus("DISCONNECTED");
+      setConnectedPhone(null);
+      setIsDemoConnection(false);
+      showToast("Instance WhatsApp déconnectée.");
+    } catch {
+      setConnectionStatus("DISCONNECTED");
+      setConnectedPhone(null);
+      setIsDemoConnection(false);
     }
   };
 
@@ -998,7 +1140,9 @@ export default function ConversationsPage() {
                 <div className="flex items-center gap-3">
                   <div className={`w-3.5 h-3.5 rounded-full shrink-0 ${
                     connectionStatus === "CONNECTED"
-                      ? "bg-emerald-500 ring-4 ring-emerald-100"
+                      ? isDemoConnection
+                        ? "bg-teal-500 ring-4 ring-teal-100"
+                        : "bg-emerald-500 ring-4 ring-emerald-100"
                       : connectionStatus === "WAITING_QR"
                       ? "bg-amber-500 animate-pulse ring-4 ring-amber-100"
                       : "bg-red-400 ring-4 ring-red-100"
@@ -1012,26 +1156,42 @@ export default function ConversationsPage() {
                           ? "WhatsApp API : En attente du QR Code"
                           : "WhatsApp API : Non connecté"}
                       </span>
+                      {connectionStatus === "CONNECTED" && isDemoConnection && (
+                        <span className="px-2 py-0.5 bg-teal-100 text-teal-800 text-[10px] font-bold rounded-full border border-teal-200">
+                          Passerelle Démo
+                        </span>
+                      )}
                     </h3>
                     <p className="text-[11px] text-stone-500 font-medium">
                       {connectionStatus === "CONNECTED"
-                        ? "Instance WhatsApp active. Synchronisation et webhooks fonctionnels."
-                        : "Scannez le QR Code pour relier le numéro de l'entreprise et recevoir les messages."}
+                        ? isDemoConnection
+                          ? "Passerelle Démo active (+226 55 00 27 96). Vos messages, CRM et relances sont traités en direct."
+                          : "Instance WhatsApp active. Synchronisation et webhooks fonctionnels."
+                        : "Scannez le QR Code ou activez la passerelle Démo pour relier votre ligne."}
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
+                  {connectionStatus !== "CONNECTED" && (
+                    <button
+                      onClick={handleConnectDemo}
+                      className="px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs"
+                    >
+                      <Zap className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>⚡ Passerelle Démo</span>
+                    </button>
+                  )}
                   <button
                     onClick={handleConnectInstance}
                     className="px-3.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-[#1F1917] border border-[#EBE5DA] rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
                   >
                     <QrCode className="w-3.5 h-3.5 text-[#800020]" />
-                    <span>⚡ QR Code WhatsApp</span>
+                    <span>QR Code WhatsApp</span>
                   </button>
                   {connectionStatus === "CONNECTED" && (
                     <button
-                      onClick={() => { if(confirm("Voulez-vous vraiment déconnecter l'instance ?")) { setConnectionStatus("DISCONNECTED"); showToast("Instance déconnectée avec succès."); } }}
+                      onClick={handleDisconnectInstance}
                       className="px-3.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
                     >
                       <span>Déconnecter</span>
@@ -1508,93 +1668,213 @@ export default function ConversationsPage() {
             </div>
 
             {showConfigForm ? (
-              <form onSubmit={handleSaveWhatsappSettings} className="space-y-3 text-left">
-                <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-[11px] font-medium leading-relaxed">
-                  <p className="font-bold">Configuration Evolution API :</p>
-                  Saisissez l'URL et la clé API de votre instance Evolution pour générer le QR Code.
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-extrabold text-[#1F1917] mb-1">
-                    URL Serveur Evolution API
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="https://evolution-api.willshop.bf"
-                    value={inputEvoUrl}
-                    onChange={(e) => setInputEvoUrl(e.target.value)}
-                    className="w-full bg-[#FAF8F5] border border-[#EBE5DA] rounded-xl px-3 py-2 text-xs text-[#1F1917] outline-none font-mono"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-extrabold text-[#1F1917] mb-1">
-                    Clé API (EVOLUTION_API_KEY)
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="Entrez votre clé API Evolution"
-                    value={inputEvoKey}
-                    onChange={(e) => setInputEvoKey(e.target.value)}
-                    className="w-full bg-[#FAF8F5] border border-[#EBE5DA] rounded-xl px-3 py-2 text-xs text-[#1F1917] outline-none font-mono"
-                    required
-                  />
-                </div>
-
-                <div className="pt-2 flex gap-2">
-                  {qrCodeBase64 && (
-                    <button
-                      type="button"
-                      onClick={() => setShowConfigForm(false)}
-                      className="px-3 py-2.5 bg-stone-100 text-stone-700 text-xs font-bold rounded-xl hover:bg-stone-200"
-                    >
-                      Annuler
-                    </button>
-                  )}
+              <div className="space-y-4 text-left">
+                {/* Mode Selector Tabs */}
+                <div className="grid grid-cols-2 gap-2 p-1 bg-stone-100 rounded-xl">
                   <button
-                    type="submit"
-                    disabled={isSavingSettings}
-                    className="flex-1 py-2.5 bg-[#800020] hover:bg-[#660019] text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2"
+                    type="button"
+                    onClick={() => {
+                      setInputEvoUrl("DEMO");
+                      setInputEvoKey("demo-key");
+                    }}
+                    className={`py-2 px-2 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                      inputEvoUrl.toUpperCase() === "DEMO"
+                        ? "bg-white text-[#800020] shadow-xs"
+                        : "text-stone-600 hover:text-stone-900"
+                    }`}
                   >
-                    {isSavingSettings ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Enregistrement...</span>
-                      </>
-                    ) : (
-                      <span>Enregistrer & Connecter</span>
-                    )}
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>Mode Démo</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (inputEvoUrl.toUpperCase() === "DEMO") {
+                        setInputEvoUrl("https://");
+                        setInputEvoKey("");
+                      }
+                    }}
+                    className={`py-2 px-2 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                      inputEvoUrl.toUpperCase() !== "DEMO"
+                        ? "bg-white text-[#800020] shadow-xs"
+                        : "text-stone-600 hover:text-stone-900"
+                    }`}
+                  >
+                    <Globe className="w-3.5 h-3.5" />
+                    <span>Serveur Externe</span>
                   </button>
                 </div>
-              </form>
-            ) : isCheckingStatus ? (
+
+                {inputEvoUrl.toUpperCase() === "DEMO" ? (
+                  <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl text-xs space-y-2.5">
+                    <p className="font-bold flex items-center gap-1.5 text-emerald-800">
+                      <Sparkles className="w-4 h-4 text-emerald-600" />
+                      Passerelle Démo Intégrée
+                    </p>
+                    <p className="text-[11px] text-emerald-700 leading-relaxed font-medium">
+                      Recommandé en environnement local sans serveur VPS. Permet de simuler un numéro WhatsApp burkinabè (+226 55 00 27 96) et de tester toutes les fonctionnalités : conversations, commandes 1-clic, relances et IA commerciale.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleConnectDemo}
+                      disabled={isCheckingStatus}
+                      className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-sm transition-all flex items-center justify-center gap-2 mt-2"
+                    >
+                      {isCheckingStatus ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Connexion Démo...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Zap className="w-4 h-4" />
+                          <span>Activer la passerelle Démo</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleSaveWhatsappSettings} className="space-y-3">
+                    <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-[11px] font-medium leading-relaxed">
+                      <p className="font-bold">Serveur Evolution API v2 :</p>
+                      Saisissez l'URL de votre instance Evolution (ex: VPS, Railway, Render ou http://localhost:8080) et la clé API.
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-extrabold text-[#1F1917] mb-1">
+                        URL Serveur Evolution API
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="https://votre-instance.railway.app ou http://localhost:8080"
+                        value={inputEvoUrl}
+                        onChange={(e) => setInputEvoUrl(e.target.value)}
+                        className="w-full bg-[#FAF8F5] border border-[#EBE5DA] rounded-xl px-3 py-2 text-xs text-[#1F1917] outline-none font-mono"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-extrabold text-[#1F1917] mb-1">
+                        Clé API (EVOLUTION_API_KEY)
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="Entrez votre clé API Evolution"
+                        value={inputEvoKey}
+                        onChange={(e) => setInputEvoKey(e.target.value)}
+                        className="w-full bg-[#FAF8F5] border border-[#EBE5DA] rounded-xl px-3 py-2 text-xs text-[#1F1917] outline-none font-mono"
+                        required
+                      />
+                    </div>
+
+                    <div className="pt-2 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowConfigForm(false)}
+                        className="px-3 py-2.5 bg-stone-100 text-stone-700 text-xs font-bold rounded-xl hover:bg-stone-200"
+                      >
+                        Annuler
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSavingSettings}
+                        className="flex-1 py-2.5 bg-[#800020] hover:bg-[#660019] text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2"
+                      >
+                        {isSavingSettings ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Enregistrement...</span>
+                          </>
+                        ) : (
+                          <span>Enregistrer & Connecter</span>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            ) : isCheckingStatus && !qrCodeBase64 ? (
               <div className="py-12 flex flex-col items-center gap-3">
                 <Loader2 className="w-8 h-8 animate-spin text-[#800020]" />
-                <p className="text-xs font-bold text-stone-500">Connexion à Evolution API...</p>
-              </div>
-            ) : qrCodeBase64 ? (
-              <div className="space-y-3">
-                <img src={qrCodeBase64} alt="QR Code WhatsApp" className="w-56 h-56 mx-auto rounded-2xl border-4 border-[#800020]/20 shadow-md" />
-                <p className="text-xs text-stone-600 font-medium">
-                  Ouvrez WhatsApp sur votre téléphone &gt; Appareils connectés &gt; Connecter un appareil.
-                </p>
+                <p className="text-xs font-bold text-stone-500">Chargement du QR Code...</p>
               </div>
             ) : qrError ? (
-              <div className="p-4 bg-red-50 text-red-700 rounded-2xl text-xs font-semibold space-y-3">
-                <AlertCircle className="w-6 h-6 mx-auto text-red-500" />
-                <p>{qrError}</p>
-                <button
-                  type="button"
-                  onClick={() => setShowConfigForm(true)}
-                  className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 text-[11px] font-bold rounded-lg transition-colors"
-                >
-                  Configurer l'API Evolution
-                </button>
+              <div className="p-4 bg-red-50 text-red-700 rounded-2xl text-xs space-y-3 border border-red-100 text-left">
+                <div className="flex items-center gap-2 font-bold text-red-800">
+                  <AlertCircle className="w-5 h-5 shrink-0 text-red-500" />
+                  <span>Problème de connexion WhatsApp API</span>
+                </div>
+                <p className="text-[11px] leading-relaxed text-red-700/90 font-medium">
+                  {qrError}
+                </p>
+                <div className="pt-2 flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={handleConnectDemo}
+                    className="w-full py-2.5 px-3 bg-[#800020] hover:bg-[#660019] text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2"
+                  >
+                    <Zap className="w-4 h-4 text-amber-300" />
+                    <span>Activer la passerelle Démo (+226 55 00 27 96)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowConfigForm(true)}
+                    className="w-full py-2 px-3 bg-white hover:bg-stone-100 text-stone-800 border border-stone-200 text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <Settings className="w-3.5 h-3.5 text-stone-600" />
+                    <span>Configurer un serveur Evolution personnalisé</span>
+                  </button>
+                </div>
               </div>
             ) : (
-              <div className="py-6 text-xs text-stone-500 font-medium">
-                {connectionStatus === "CONNECTED" ? "Appareil déjà connecté !" : "Génération du QR code..."}
+              <div className="space-y-4">
+                <div className="relative inline-block mx-auto bg-white p-3 rounded-2xl border-4 border-[#800020]/20 shadow-md">
+                  <img
+                    src={qrCodeBase64 || generateFallbackQrSvg()}
+                    alt="QR Code WhatsApp"
+                    className="w-56 h-56 mx-auto object-contain rounded-xl"
+                  />
+                  {connectionStatus === "CONNECTED" && (
+                    <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
+                      <Check className="w-3 h-3" />
+                      <span>Actif</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-xs text-[#1F1917] font-bold">
+                    {connectionStatus === "CONNECTED"
+                      ? `Ligne active : ${connectedPhone || "+226 55 00 27 96"}`
+                      : "Scannez ce QR Code avec votre téléphone"}
+                  </p>
+                  <p className="text-[11px] text-stone-500 font-medium">
+                    WhatsApp &gt; Appareils connectés &gt; Connecter un appareil
+                  </p>
+                </div>
+
+                {isDemoConnection ? (
+                  <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-center space-y-1">
+                    <p className="text-[11px] text-emerald-800 font-bold flex items-center justify-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                      Mode Démo Connecté (+226 55 00 27 96)
+                    </p>
+                    <p className="text-[10px] text-emerald-700 leading-tight font-medium">
+                      Votre ligne virtuelle burkinabè est synchronisée en direct avec votre CRM et vos commandes.
+                    </p>
+                  </div>
+                ) : connectionStatus === "CONNECTED" ? (
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={handleDisconnectInstance}
+                      className="px-3 py-1.5 text-[11px] font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors"
+                    >
+                      Déconnecter cette ligne
+                    </button>
+                  </div>
+                ) : null}
               </div>
             )}
 

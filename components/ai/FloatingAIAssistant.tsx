@@ -66,17 +66,29 @@ export function FloatingAIAssistant() {
 
       const { data: roleData } = await supabase
         .from("user_organization_roles")
-        .select("role, profiles(first_name, last_name)")
+        .select("role")
         .eq("user_id", user.id)
         .is("deleted_at", null)
-      .order("created_at", { ascending: true }).limit(1);
+        .order("created_at", { ascending: true })
+        .limit(1);
 
       if (roleData && roleData.length > 0) {
-        const r = roleData[0].role;
-        setUserRole(r || "COMMERCIAL");
-        const prof = (roleData[0] as any).profiles;
-        if (prof?.first_name) {
-          setUserName(prof.first_name);
+        setUserRole(roleData[0].role || "COMMERCIAL");
+      }
+
+      const meta = user.user_metadata;
+      if (meta?.first_name) {
+        setUserName(meta.first_name);
+      } else if (meta?.full_name) {
+        setUserName(meta.full_name.split(" ")[0]);
+      } else {
+        const { data: orgData } = await supabase
+          .from("organizations")
+          .select("name")
+          .limit(1)
+          .maybeSingle();
+        if (orgData?.name) {
+          setUserName(orgData.name.split(" ")[0]);
         }
       }
     } catch (_e) {
@@ -151,7 +163,7 @@ export function FloatingAIAssistant() {
   const isDriverRole = userRole === "DRIVER";
 
   const suggestionChips = isCeoRole
-    ? ["• Synthèse d'hier", "• Alertes prioritaires", "• Commandes en attente", "• Livraisons en difficulté"]
+    ? ["• Mes clients", "• Mes commandes", "• Mes relances", "• Chiffre d'affaires", "• Commandes en attente", "• Synthèse"]
     : isDriverRole
     ? ["• Mes livraisons", "• Prochaine livraison", "• Échecs de livraison"]
     : ["• Mes actions", "• Mes clients", "• Mes commandes", "• Mes relances", "• Prépare-moi une réponse"];

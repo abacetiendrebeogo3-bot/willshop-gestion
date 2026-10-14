@@ -1,6 +1,6 @@
-import { describe, it } from 'node:test';
+import { describe, it, before } from 'node:test';
 import assert from 'node:assert';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // Requires the test runner to supply these tokens
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -15,20 +15,24 @@ if (shouldSkip) {
   console.warn('⚠️ Skipping RBAC DB tests: Missing TEST_TOKEN_* environment variables.');
 }
 
-describe('Database RBAC & RLS Security Tests', { skip: shouldSkip }, () => {
-  if (shouldSkip) {
-    it('dummy test to satisfy test runner', () => {});
-    return; // Prevent createClient from throwing on empty URL
-  }
+// AUDIT FIX: Lazy-initialize Supabase clients to avoid esbuild parse-time failure
+// (createClient with empty URL causes esbuild transform error at parse time)
+let clientOwner: SupabaseClient;
+let clientCommercial: SupabaseClient;
+let clientLivreur: SupabaseClient;
 
-  const clientOwner = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: `Bearer ${ownerToken}` } }
-  });
-  const clientCommercial = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: `Bearer ${commercialToken}` } }
-  });
-  const clientLivreur = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: `Bearer ${livreurToken}` } }
+describe('Database RBAC & RLS Security Tests', { skip: shouldSkip }, () => {
+  before(() => {
+    // Only create clients when the suite actually runs (not skipped)
+    clientOwner = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: `Bearer ${ownerToken}` } }
+    });
+    clientCommercial = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: `Bearer ${commercialToken}` } }
+    });
+    clientLivreur = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: `Bearer ${livreurToken}` } }
+    });
   });
 
   // --- RLS Tests ---

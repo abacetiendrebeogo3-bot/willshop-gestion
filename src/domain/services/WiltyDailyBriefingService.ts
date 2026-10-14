@@ -81,7 +81,7 @@ export class WiltyDailyBriefingService {
     return {
       userId,
       briefingDate: todayISO,
-      situationSummary: `Bonjour Willy. Vous avez ${todayTasks.length} tâche(s) au programme aujourd'hui et ${accounts.length} compte(s) personnels actifs.`,
+      situationSummary: `Bonjour. Vous avez ${todayTasks.length} tâche(s) au programme aujourd'hui et ${accounts.length} compte(s) personnels actifs.`,
       topPriorityNumber1: topPriority,
       todayTasks,
       goalHighlights: goals.filter((g) => g.status === 'ACTIVE').slice(0, 3),
