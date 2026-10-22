@@ -82,6 +82,8 @@ export async function POST(request: NextRequest) {
 
     const instanceName = `ws_org_${organizationId.replace(/-/g, '').slice(0, 12)}`;
 
+    const evolutionAdapter = new EvolutionWhatsAppAdapter(evoUrl, evoKey);
+
     // 4. Logout on Evolution API if adapter is configured
     try {
       if (evolutionAdapter.isConfigured()) {
