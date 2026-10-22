@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/src/infrastructure/supabase/client";
 import {
+  Radar,
   Sun,
   LayoutDashboard,
   MessageSquare,
@@ -115,6 +116,7 @@ export function Sidebar() {
   const CEO_ITEMS = [
     { name: "Accueil", href: "/ceo", icon: LayoutDashboard },
     { name: "Ventes", href: "/sales", icon: TrendingUp },
+    { name: "Superviseur", href: "/sales/supervisor", icon: Radar },
     { name: "WhatsApp CRM", href: "/whatsapp", icon: MessageSquare },
     { name: "Commandes", href: "/orders", icon: ShoppingCart },
     { name: "Livraisons", href: "/delivery", icon: Truck },
@@ -128,6 +130,7 @@ export function Sidebar() {
 
   const COMMERCIAL_ITEMS = [
     { name: "Accueil", href: "/sales/my-day", icon: Sun },
+    { name: "Superviseur", href: "/sales/supervisor", icon: Radar },
     { name: "WhatsApp CRM", href: "/whatsapp", icon: MessageSquare },
     { name: "Conversations", href: "/sales", icon: MessageSquare },
     { name: "Clients", href: "/sales/customers", icon: Users },

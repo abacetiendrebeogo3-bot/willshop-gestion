@@ -70,6 +70,16 @@ export async function POST(
 
     const rawPayload = JSON.parse(rawBody || '{}');
 
+    // Evolution envoie aussi des événements de statut (messages.update = vu/livré, connection.update…).
+    // Seuls les VRAIS messages doivent créer des messages en base, sinon on obtient des messages vides
+    // et l'agent peut répondre à un simple accusé de lecture.
+    if (provider === 'evolution' && rawPayload?.event) {
+      const evt = String(rawPayload.event).toLowerCase().replace(/_/g, '.');
+      if (evt !== 'messages.upsert' && evt !== 'send.message') {
+        return NextResponse.json({ status: 'SUCCESS', provider, correlationId, processedEvents: 0, message: `Event '${rawPayload.event}' ignored` });
+      }
+    }
+
     // 1. Normalize Event
     const normalizedEvent = WhatsAppEventNormalizer.normalize(provider, rawPayload);
 

@@ -992,6 +992,17 @@ export class WhatsAppApplicationService {
 
       const aiConfig = orgData?.settings?.ai_agent_config || {};
 
+      // MODE OBSERVATEUR (numéro connecté par QR code via Evolution) :
+      // l'app lit et supervise, mais n'envoie JAMAIS de message automatique depuis ce numéro (anti-ban).
+      if (process.env.WHATSAPP_OBSERVER_MODE === 'true') {
+        return {
+          status: 'SUCCESS',
+          message: 'Inbound message saved. Observer mode: no automatic reply.',
+          organizationId: targetOrgId,
+          conversationId,
+        };
+      }
+
       if (aiConfig.enabled === false) {
         return {
           status: 'SUCCESS',
